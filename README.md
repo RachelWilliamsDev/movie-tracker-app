@@ -38,7 +38,13 @@ A small **Next.js** app for searching TMDB titles, tracking what you watch, per-
 
 2. **Environment variables**
 
-   Create a `.env` file in the project root (see [Environment variables](#environment-variables)). At minimum you need `DATABASE_URL` and `TMDB_API_KEY`; for auth in production, set `NEXTAUTH_SECRET` and `NEXTAUTH_URL`.
+   Copy the template and fill in values:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Edit `.env` (see [Environment variables](#environment-variables)). You need `DATABASE_URL` and `TMDB_API_KEY`; set `NEXTAUTH_SECRET` for auth. **`NEXTAUTH_URL`** is included in `.env.example` as `http://127.0.0.1:3000` so local `npm run dev` matches NextAuth and avoids `NEXTAUTH_URL` console warnings. In production, set `NEXTAUTH_URL` to your deployed origin (no code changes required).
 
 3. **Database schema**
 
@@ -81,9 +87,9 @@ A small **Next.js** app for searching TMDB titles, tracking what you watch, per-
 | `DATABASE_URL` | Yes | PostgreSQL connection string for Prisma |
 | `TMDB_API_KEY` | Yes (for search/detail) | TMDB API key ([themoviedb.org](https://www.themoviedb.org/settings/api)) |
 | `NEXTAUTH_SECRET` | Yes in production | Secret for signing session tokens |
-| `NEXTAUTH_URL` | Production / OAuth callbacks | Canonical app URL (e.g. `http://127.0.0.1:3000` locally) |
+| `NEXTAUTH_URL` | Yes (local + production) | Canonical site URL for NextAuth. Use `http://127.0.0.1:3000` for local dev (same host/port as `npm run dev`). Set to your production URL in hosted environments. |
 
-If `NEXTAUTH_URL` is missing locally, NextAuth may log a warning; set it to match how you open the app.
+Use `.env.example` as the starting point; omitting `NEXTAUTH_URL` locally causes NextAuth to log a warning.
 
 ## Project layout (high level)
 
