@@ -8,6 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { tmdbFetch } from "@/lib/tmdb";
 import { EpisodeProgressPanel } from "@/components/episode-progress-panel";
+import { RatingPanel } from "@/components/rating-panel";
 
 const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
 
@@ -119,6 +120,19 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
         })
       : null;
 
+  const userRating =
+    userId != null
+      ? await prisma.userRating.findUnique({
+          where: {
+            userId_contentId_mediaType: {
+              userId,
+              contentId: numericId,
+              mediaType
+            }
+          }
+        })
+      : null;
+
   let title: string;
   let overview: string;
   let posterPath: string | null;
@@ -200,6 +214,13 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
               {overview?.trim() ? overview : "No overview available."}
             </p>
           </section>
+
+          <RatingPanel
+            contentId={numericId}
+            initialRating={userRating?.rating ?? null}
+            isLoggedIn={!!userId}
+            mediaType={mediaType}
+          />
 
           <MarkWatchedButton
             contentId={numericId}
