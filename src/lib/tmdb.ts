@@ -12,6 +12,10 @@ type TmdbFetchOptions = {
   revalidate?: number;
 };
 
+function isV3ApiKey(value: string) {
+  return /^[a-f0-9]{32}$/i.test(value);
+}
+
 export async function tmdbFetch<T>(
   path: string,
   searchParams: Record<string, string | number | undefined> = {},
@@ -26,11 +30,21 @@ export async function tmdbFetch<T>(
     }
   }
 
+  const headers: HeadersInit = {
+    Accept: "application/json"
+  };
+
+  // Support both TMDB credential formats:
+  // - v3 API key: query param api_key
+  // - v4 read access token: Bearer header
+  if (isV3ApiKey(apiKey)) {
+    url.searchParams.set("api_key", apiKey);
+  } else {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+
   const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      Accept: "application/json"
-    },
+    headers,
     next: options.revalidate ? { revalidate: options.revalidate } : undefined
   });
 
