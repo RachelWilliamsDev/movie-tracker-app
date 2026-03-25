@@ -11,6 +11,13 @@ datasource db {
   provider = "postgresql"
 }
 
+enum WatchSource {
+  NETFLIX
+  DISNEY_PLUS
+  PRIME_VIDEO
+  OTHER
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -25,12 +32,13 @@ model User {
 
 /// TMDB-backed watch record; one row per user + title (movie or TV).
 model UserWatch {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  contentId Int
-  mediaType String
-  createdAt DateTime @default(now())
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId    Int
+  mediaType    String
+  watchSource  WatchSource?
+  createdAt    DateTime     @default(now())
 
   @@unique([userId, contentId, mediaType])
 }
