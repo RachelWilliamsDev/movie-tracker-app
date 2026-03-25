@@ -19,6 +19,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   watches   UserWatch[]
+  tvEpisodeProgress UserTvEpisodeProgress[]
 }
 
 /// TMDB-backed watch record; one row per user + title (movie or TV).
@@ -31,4 +32,19 @@ model UserWatch {
   createdAt DateTime @default(now())
 
   @@unique([userId, contentId, mediaType])
+}
+
+/// Current episode per TV season; one row per user + show + season.
+model UserTvEpisodeProgress {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId      Int
+  mediaType      String
+  seasonNumber   Int
+  episodeNumber  Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, contentId, mediaType, seasonNumber])
 }

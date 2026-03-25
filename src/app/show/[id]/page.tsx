@@ -7,6 +7,7 @@ import { MarkWatchedButton } from "@/components/mark-watched-button";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { tmdbFetch } from "@/lib/tmdb";
+import { EpisodeProgressPanel } from "@/components/episode-progress-panel";
 
 const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
 
@@ -26,9 +27,16 @@ type TmdbTvDetail = {
   genres: TmdbGenre[];
 };
 
+type TmdbSeasonDetail = {
+  episodes: Array<{
+    episode_number: number;
+    name: string;
+  }>;
+};
+
 type PageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; season?: string }>;
 };
 
 function isMediaType(value: string | undefined): value is "movie" | "tv" {
@@ -75,6 +83,12 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
   }
 
   const mediaType = isMediaType(sp.type) ? sp.type : "movie";
+  const seasonNumber =
+    mediaType === "tv" ? Number.parseInt(sp.season ?? "1", 10) : 1;
+
+  if (mediaType === "tv" && (!Number.isFinite(seasonNumber) || seasonNumber <= 0)) {
+    notFound();
+  }
 
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
@@ -91,10 +105,25 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
         })
       : null;
 
+  const seasonProgress =
+    userId != null && mediaType === "tv"
+      ? await prisma.userTvEpisodeProgress.findUnique({
+          where: {
+            userId_contentId_mediaType_seasonNumber: {
+              userId,
+              contentId: numericId,
+              mediaType: "tv",
+              seasonNumber
+            }
+          }
+        })
+      : null;
+
   let title: string;
   let overview: string;
   let posterPath: string | null;
   let genres: TmdbGenre[];
+  let seasonEpisodes: Array<{ episodeNumber: number; title: string }> = [];
 
   try {
     if (mediaType === "movie") {
@@ -117,6 +146,16 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
       overview = data.overview;
       posterPath = data.poster_path;
       genres = data.genres ?? [];
+
+      const season = await tmdbFetch<TmdbSeasonDetail>(
+        `/tv/${numericId}/season/${seasonNumber}`,
+        { language: "en-US" },
+        { revalidate: 3600 }
+      );
+      seasonEpisodes = season.episodes.map((ep) => ({
+        episodeNumber: ep.episode_number,
+        title: ep.name
+      }));
     }
   } catch {
     notFound();
@@ -168,6 +207,39 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
             isLoggedIn={!!userId}
             mediaType={mediaType}
           />
+
+          {mediaType === "tv" ? (
+            <>
+              <div className="mt-6 flex items-center gap-2">
+                {[1, 2].map((n) => {
+                  const href = `/show/${numericId}?type=tv&season=${n}`;
+                  const active = n === seasonNumber;
+                  return (
+                    <Link
+                      key={n}
+                      href={href}
+                      className={`rounded px-3 py-1 text-sm ${
+                        active
+                          ? "bg-black text-white"
+                          : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      Season {n}
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <EpisodeProgressPanel
+                key={`${numericId}-tv-season-${seasonNumber}`}
+                contentId={numericId}
+                episodes={seasonEpisodes}
+                isLoggedIn={!!userId}
+                seasonNumber={seasonNumber}
+                savedEpisodeNumber={seasonProgress?.episodeNumber ?? null}
+              />
+            </>
+          ) : null}
         </div>
       </div>
     </main>
