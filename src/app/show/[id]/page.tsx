@@ -225,6 +225,7 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
           <MarkWatchedButton
             contentId={numericId}
             initialWatched={!!existingWatch}
+            initialWatchSource={existingWatch?.watchSource ?? null}
             isLoggedIn={!!userId}
             mediaType={mediaType}
           />

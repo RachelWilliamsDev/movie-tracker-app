@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
+import type { WatchSource } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+/** Keep in sync with Prisma `WatchSource` enum (explicit list avoids bundler issues with `Object.values`). */
+const WATCH_SOURCE_VALUES = [
+  "NETFLIX",
+  "DISNEY_PLUS",
+  "PRIME_VIDEO",
+  "OTHER"
+] as const satisfies readonly WatchSource[];
+
+const WATCH_SOURCES = new Set<string>(WATCH_SOURCE_VALUES);
 
 type Body = {
   contentId?: number;
   mediaType?: string;
+  watchSource?: string;
 };
 
 export async function POST(request: Request) {
@@ -24,6 +36,7 @@ export async function POST(request: Request) {
 
   const contentId = Number(body.contentId);
   const mediaType = body.mediaType === "tv" ? "tv" : body.mediaType === "movie" ? "movie" : null;
+  const rawSource = body.watchSource;
 
   if (!Number.isFinite(contentId) || contentId <= 0 || !mediaType) {
     return NextResponse.json(
@@ -32,23 +45,39 @@ export async function POST(request: Request) {
     );
   }
 
+  if (typeof rawSource !== "string" || !WATCH_SOURCES.has(rawSource)) {
+    return NextResponse.json(
+      {
+        error: "watchSource is required and must be one of: NETFLIX, DISNEY_PLUS, PRIME_VIDEO, OTHER"
+      },
+      { status: 400 }
+    );
+  }
+
+  const watchSource = rawSource as WatchSource;
+
   try {
-    await prisma.userWatch.create({
-      data: {
+    await prisma.userWatch.upsert({
+      where: {
+        userId_contentId_mediaType: {
+          userId,
+          contentId,
+          mediaType
+        }
+      },
+      create: {
         userId,
         contentId,
-        mediaType
+        mediaType,
+        watchSource
+      },
+      update: {
+        watchSource
       }
     });
-    return NextResponse.json({ ok: true, created: true });
-  } catch (e: unknown) {
-    const code =
-      typeof e === "object" && e !== null && "code" in e
-        ? String((e as { code?: string }).code)
-        : "";
-    if (code === "P2002") {
-      return NextResponse.json({ ok: true, created: false, alreadyWatched: true });
-    }
-    throw e;
+
+    return NextResponse.json({ ok: true, watchSource });
+  } catch {
+    return NextResponse.json({ error: "Could not save watch." }, { status: 500 });
   }
 }
