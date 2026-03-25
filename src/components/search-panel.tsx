@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 type SearchResult = {
   id: number;
@@ -77,30 +78,32 @@ export function SearchPanel() {
       {results.length > 0 ? (
         <ul className="mt-4 space-y-2">
           {results.map((item) => (
-            <li
-              className="flex items-center gap-3 rounded border border-gray-200 p-2"
-              key={`${item.mediaType}-${item.id}`}
-            >
-              {item.posterPath ? (
-                <Image
-                  alt={item.title}
-                  className="h-16 w-11 rounded object-cover"
-                  height={64}
-                  src={`${POSTER_BASE_URL}${item.posterPath}`}
-                  unoptimized
-                  width={44}
-                />
-              ) : (
-                <div className="flex h-16 w-11 items-center justify-center rounded bg-gray-100 text-xs text-gray-500">
-                  N/A
+            <li key={`${item.mediaType}-${item.id}`}>
+              <Link
+                className="flex items-center gap-3 rounded border border-gray-200 p-2 transition hover:bg-gray-50"
+                href={`/show/${item.id}?type=${item.mediaType}`}
+              >
+                {item.posterPath ? (
+                  <Image
+                    alt={item.title}
+                    className="h-16 w-11 rounded object-cover"
+                    height={64}
+                    src={`${POSTER_BASE_URL}${item.posterPath}`}
+                    unoptimized
+                    width={44}
+                  />
+                ) : (
+                  <div className="flex h-16 w-11 items-center justify-center rounded bg-gray-100 text-xs text-gray-500">
+                    N/A
+                  </div>
+                )}
+                <div>
+                  <p className="font-medium">{item.title}</p>
+                  <p className="text-sm text-gray-600">
+                    {item.releaseYear ?? "Unknown year"} · {item.mediaType.toUpperCase()}
+                  </p>
                 </div>
-              )}
-              <div>
-                <p className="font-medium">{item.title}</p>
-                <p className="text-sm text-gray-600">
-                  {item.releaseYear ?? "Unknown year"} · {item.mediaType.toUpperCase()}
-                </p>
-              </div>
+              </Link>
             </li>
           ))}
         </ul>
