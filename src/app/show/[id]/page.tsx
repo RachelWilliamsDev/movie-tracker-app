@@ -44,6 +44,22 @@ function isMediaType(value: string | undefined): value is "movie" | "tv" {
   return value === "movie" || value === "tv";
 }
 
+/** TV `season` query: missing/blank → 1; invalid → null (caller should `notFound()`). */
+function parseTvSeasonQueryParam(raw: string | undefined): number | null {
+  if (raw === undefined || raw.trim() === "") {
+    return 1;
+  }
+  const trimmed = raw.trim();
+  if (!/^\d+$/.test(trimmed)) {
+    return null;
+  }
+  const n = Number.parseInt(trimmed, 10);
+  if (!Number.isFinite(n) || n <= 0) {
+    return null;
+  }
+  return n;
+}
+
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const sp = await searchParams;
@@ -84,11 +100,14 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
   }
 
   const mediaType = isMediaType(sp.type) ? sp.type : "movie";
-  const seasonNumber =
-    mediaType === "tv" ? Number.parseInt(sp.season ?? "1", 10) : 1;
 
-  if (mediaType === "tv" && (!Number.isFinite(seasonNumber) || seasonNumber <= 0)) {
-    notFound();
+  let seasonNumber = 1;
+  if (mediaType === "tv") {
+    const parsed = parseTvSeasonQueryParam(sp.season);
+    if (parsed === null) {
+      notFound();
+    }
+    seasonNumber = parsed;
   }
 
   const session = await getServerSession(authOptions);
