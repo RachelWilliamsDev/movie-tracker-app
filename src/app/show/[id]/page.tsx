@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getServerSession } from "next-auth/next";
+import { MarkWatchedButton } from "@/components/mark-watched-button";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { tmdbFetch } from "@/lib/tmdb";
 
 const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
@@ -71,6 +75,21 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
   }
 
   const mediaType = isMediaType(sp.type) ? sp.type : "movie";
+
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+  const existingWatch =
+    userId != null
+      ? await prisma.userWatch.findUnique({
+          where: {
+            userId_contentId_mediaType: {
+              userId,
+              contentId: numericId,
+              mediaType
+            }
+          }
+        })
+      : null;
 
   let title: string;
   let overview: string;
@@ -142,6 +161,13 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
               {overview?.trim() ? overview : "No overview available."}
             </p>
           </section>
+
+          <MarkWatchedButton
+            contentId={numericId}
+            initialWatched={!!existingWatch}
+            isLoggedIn={!!userId}
+            mediaType={mediaType}
+          />
         </div>
       </div>
     </main>
