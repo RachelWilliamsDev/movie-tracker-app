@@ -20,6 +20,7 @@ model User {
   updatedAt DateTime @updatedAt
   watches   UserWatch[]
   tvEpisodeProgress UserTvEpisodeProgress[]
+  ratings   UserRating[]
 }
 
 /// TMDB-backed watch record; one row per user + title (movie or TV).
@@ -47,4 +48,18 @@ model UserTvEpisodeProgress {
   updatedAt      DateTime @updatedAt
 
   @@unique([userId, contentId, mediaType, seasonNumber])
+}
+
+/// User score for a movie or TV title (1–5). Independent of watch / episode progress.
+model UserRating {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId  Int
+  mediaType  String
+  rating     Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, contentId, mediaType])
 }
