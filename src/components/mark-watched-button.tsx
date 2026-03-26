@@ -33,7 +33,12 @@ export function MarkWatchedButton({
       const res = await fetch("/api/watch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentId, mediaType, watchSource: source }),
+        body: JSON.stringify({
+          contentId,
+          mediaType,
+          watchStatus: "COMPLETED",
+          watchSource: source
+        }),
         credentials: "same-origin"
       });
       const data = (await res.json()) as {
