@@ -1,14 +1,22 @@
 "use client";
 
-import type { WatchSource } from "@prisma/client";
+import type { WatchSource, WatchStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 import { WATCH_SOURCE_LABEL, WATCH_SOURCE_ORDER } from "@/lib/watch-source";
+import { WATCH_STATUS_LABEL, WATCH_STATUS_ORDER } from "@/lib/watch-status";
 
 type Props = {
   contentId: number;
   mediaType: "movie" | "tv";
-  initialWatched: boolean;
+  initialWatchStatus: WatchStatus | null;
   initialWatchSource: WatchSource | null;
   isLoggedIn: boolean;
 };
@@ -16,17 +24,66 @@ type Props = {
 export function MarkWatchedButton({
   contentId,
   mediaType,
-  initialWatched,
+  initialWatchStatus,
   initialWatchSource,
   isLoggedIn
 }: Props) {
   const router = useRouter();
-  const [watched, setWatched] = useState(initialWatched);
+  const [status, setStatus] = useState<WatchStatus | null>(initialWatchStatus);
   const [watchSource, setWatchSource] = useState<WatchSource | null>(initialWatchSource);
+  const [loading, setLoading] = useState(false);
   const [loadingSource, setLoadingSource] = useState<WatchSource | null>(null);
   const [message, setMessage] = useState("");
 
-  async function saveWithSource(source: WatchSource) {
+  useEffect(() => {
+    setStatus(initialWatchStatus);
+    setWatchSource(initialWatchSource);
+  }, [initialWatchStatus, initialWatchSource]);
+
+  async function postWatch(nextStatus: WatchStatus, source: WatchSource | null) {
+    setLoading(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/watch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contentId,
+          mediaType,
+          watchStatus: nextStatus,
+          watchSource: source
+        }),
+        credentials: "same-origin"
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        ok?: boolean;
+        watchSource?: WatchSource | null;
+        watchStatus?: WatchStatus;
+      };
+
+      if (res.status === 401) {
+        setMessage("Session expired. Sign in again.");
+        return;
+      }
+      if (!res.ok) {
+        setMessage(data.error ?? "Could not save.");
+        return;
+      }
+
+      if (typeof data.watchStatus === "string") {
+        setStatus(data.watchStatus as WatchStatus);
+      }
+      setWatchSource(data.watchSource ?? null);
+      router.refresh();
+    } catch {
+      setMessage("Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveCompletedSource(source: WatchSource) {
     setLoadingSource(source);
     setMessage("");
     try {
@@ -44,7 +101,8 @@ export function MarkWatchedButton({
       const data = (await res.json()) as {
         error?: string;
         ok?: boolean;
-        watchSource?: WatchSource;
+        watchSource?: WatchSource | null;
+        watchStatus?: WatchStatus;
       };
 
       if (res.status === 401) {
@@ -56,7 +114,7 @@ export function MarkWatchedButton({
         return;
       }
 
-      setWatched(true);
+      setStatus("COMPLETED");
       setWatchSource(data.watchSource ?? source);
       router.refresh();
     } catch {
@@ -66,48 +124,88 @@ export function MarkWatchedButton({
     }
   }
 
+  function onStatusChange(value: string) {
+    const next = value as WatchStatus;
+    setStatus(next);
+
+    if (next === "COMPLETED") {
+      return;
+    }
+
+    void postWatch(next, null);
+  }
+
   if (!isLoggedIn) {
     return (
       <p className="mt-4 text-sm text-gray-600">
-        Sign in on the home page to mark titles as watched.
+        Sign in on the home page to set your watch status.
       </p>
     );
   }
 
+  const needsCompletedSource =
+    status === "COMPLETED" && watchSource == null;
+
+  const statusSummary =
+    status != null ? (
+      <p className="mt-3 text-sm text-gray-700">
+        <span className="font-medium text-gray-900">Status:</span>{" "}
+        {WATCH_STATUS_LABEL[status]}
+        {status === "COMPLETED" && watchSource != null ? (
+          <>
+            {" "}
+            · {WATCH_SOURCE_LABEL[watchSource]}
+          </>
+        ) : null}
+      </p>
+    ) : null;
+
   return (
     <div className="mt-4">
-      <h2 className="text-sm font-medium text-gray-500">Where did you watch it?</h2>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {WATCH_SOURCE_ORDER.map((source) => {
-          const loading = loadingSource === source;
-          const active = watchSource === source && watched;
-          return (
-            <button
-              key={source}
-              className={`rounded border px-3 py-2 text-sm font-medium transition disabled:opacity-50 ${
-                active
-                  ? "border-black bg-black text-white"
-                  : "border-gray-200 bg-white text-gray-800 hover:bg-gray-50"
-              }`}
-              disabled={loading}
-              onClick={() => saveWithSource(source)}
-              type="button"
-            >
-              {loading ? "…" : WATCH_SOURCE_LABEL[source]}
-            </button>
-          );
-        })}
+      <h2 className="text-sm font-medium text-gray-500">Watch status</h2>
+
+      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <Select
+          disabled={loading || loadingSource != null}
+          onValueChange={onStatusChange}
+          value={status ?? undefined}
+        >
+          <SelectTrigger className="w-full max-w-xs border-gray-200 bg-white text-gray-900">
+            <SelectValue placeholder="Choose status" />
+          </SelectTrigger>
+          <SelectContent>
+            {WATCH_STATUS_ORDER.map((s) => (
+              <SelectItem key={s} value={s}>
+                {WATCH_STATUS_LABEL[s]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {watched ? (
-        <p className="mt-3 text-sm font-medium text-green-800">
-          {watchSource != null
-            ? `Watched on ${WATCH_SOURCE_LABEL[watchSource]}`
-            : "Marked as watched"}
-        </p>
-      ) : (
-        <p className="mt-2 text-xs text-gray-500">Choose a source to save your watch.</p>
-      )}
+      {needsCompletedSource ? (
+        <div className="mt-3">
+          <p className="text-sm text-gray-600">Where did you finish it?</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {WATCH_SOURCE_ORDER.map((source) => {
+              const busy = loadingSource === source;
+              return (
+                <button
+                  key={source}
+                  className="rounded border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:opacity-50"
+                  disabled={busy || loading}
+                  onClick={() => saveCompletedSource(source)}
+                  type="button"
+                >
+                  {busy ? "…" : WATCH_SOURCE_LABEL[source]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {statusSummary}
 
       {message ? <p className="mt-2 text-sm text-red-600">{message}</p> : null}
     </div>
