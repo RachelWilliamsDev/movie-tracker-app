@@ -18,6 +18,13 @@ enum WatchSource {
   OTHER
 }
 
+/// User intent for a title: Watching, Completed, or Want to Watch (product labels in app code).
+enum WatchStatus {
+  WATCHING
+  COMPLETED
+  WANT_TO_WATCH
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -32,13 +39,15 @@ model User {
 
 /// TMDB-backed watch record; one row per user + title (movie or TV).
 model UserWatch {
-  id           String       @id @default(cuid())
+  id           String        @id @default(cuid())
   userId       String
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   contentId    Int
   mediaType    String
+  /// Existing rows before this column map to COMPLETED via DB default (see FEAT-026).
+  watchStatus  WatchStatus   @default(COMPLETED)
   watchSource  WatchSource?
-  createdAt    DateTime     @default(now())
+  createdAt    DateTime      @default(now())
 
   @@unique([userId, contentId, mediaType])
 }
