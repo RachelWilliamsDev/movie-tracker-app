@@ -29,6 +29,29 @@ type TmdbTvDetail = {
   genres: TmdbGenre[];
 };
 
+type TmdbMovieCredits = {
+  cast: Array<{
+    name?: string;
+    order?: number;
+  }>;
+};
+
+/** First up to 3 cast names: TMDB `order` ascending, skip empty names. */
+function topMovieCastNames(cast: TmdbMovieCredits["cast"]): string[] {
+  const sorted = [...cast].sort((a, b) => (a.order ?? 99999) - (b.order ?? 99999));
+  const names: string[] = [];
+  for (const c of sorted) {
+    const n = c.name?.trim();
+    if (n) {
+      names.push(n);
+    }
+    if (names.length >= 3) {
+      break;
+    }
+  }
+  return names;
+}
+
 type PageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ type?: string; season?: string }>;
@@ -136,6 +159,7 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
   let overview: string;
   let posterPath: string | null;
   let genres: TmdbGenre[];
+  let movieTopCastNames: string[] = [];
 
   try {
     if (mediaType === "movie") {
@@ -148,6 +172,16 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
       overview = data.overview;
       posterPath = data.poster_path;
       genres = data.genres ?? [];
+      try {
+        const credits = await tmdbFetch<TmdbMovieCredits>(
+          `/movie/${numericId}/credits`,
+          {},
+          { revalidate: 3600 }
+        );
+        movieTopCastNames = topMovieCastNames(credits.cast ?? []);
+      } catch {
+        movieTopCastNames = [];
+      }
     } else {
       const data = await tmdbFetch<TmdbTvDetail>(
         `/tv/${numericId}`,
@@ -202,6 +236,21 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
               {overview?.trim() ? overview : "No overview available."}
             </p>
           </section>
+
+          {mediaType === "movie" ? (
+            <section className="mt-4">
+              <h2 className="text-sm font-medium text-gray-500">Cast</h2>
+              {movieTopCastNames.length > 0 ? (
+                <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-800">
+                  {movieTopCastNames.map((name, index) => (
+                    <li key={`${name}-${index}`}>{name}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-sm text-gray-600">No cast listed.</p>
+              )}
+            </section>
+          ) : null}
 
           <RatingPanel
             contentId={numericId}
