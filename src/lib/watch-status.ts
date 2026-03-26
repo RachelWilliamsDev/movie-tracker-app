@@ -6,3 +6,5 @@ export const WATCH_STATUS_LABEL: Record<WatchStatus, string> = {
   COMPLETED: "Completed",
   WANT_TO_WATCH: "Want to Watch"
 };
+
+export const WATCH_STATUS_ORDER: WatchStatus[] = ["WATCHING", "COMPLETED", "WANT_TO_WATCH"];
