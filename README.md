@@ -17,6 +17,7 @@ A small **Next.js** app for searching TMDB titles, tracking what you watch, per-
 |--------|--------|
 | Framework | Next.js (App Router), React 19 |
 | Styling | Tailwind CSS 4 |
+| UI | [shadcn/ui](https://ui.shadcn.com/) — components in `src/components/ui/` (add more with `npx shadcn@latest add <name>`) |
 | Database | PostgreSQL + Prisma 7 (`@prisma/adapter-pg`) |
 | Auth | NextAuth.js (credentials provider) |
 | External API | TMDB v3 |
