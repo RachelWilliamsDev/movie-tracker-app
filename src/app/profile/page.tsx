@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { tmdbFetch } from "@/lib/tmdb";
 import { WATCH_SOURCE_LABEL } from "@/lib/watch-source";
+import { WATCH_STATUS_LABEL } from "@/lib/watch-status";
 
 type TmdbMovieDetail = { title: string };
 type TmdbTvDetail = { name: string };
@@ -216,15 +217,18 @@ export default async function ProfilePage() {
       </section>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4">
-        <h2 className="text-base font-medium text-gray-900">Watched</h2>
+        <h2 className="text-base font-medium text-gray-900">Watch list</h2>
 
         {resolvedWatched.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-600">No watched titles yet.</p>
+          <p className="mt-2 text-sm text-gray-600">No titles in your list yet.</p>
         ) : (
           <ul className="mt-3 space-y-3">
             {resolvedWatched.map((watch, idx) => {
-              const sourceKey = watch.watchSource ?? "OTHER";
-              const sourceLabel = WATCH_SOURCE_LABEL[sourceKey];
+              const statusLabel = WATCH_STATUS_LABEL[watch.watchStatus];
+              const sourceSuffix =
+                watch.watchStatus === "COMPLETED" && watch.watchSource != null
+                  ? ` · ${WATCH_SOURCE_LABEL[watch.watchSource]}`
+                  : "";
 
               return (
                 <li key={`${watch.mediaType}-${watch.contentId}-${idx}`}>
@@ -232,7 +236,8 @@ export default async function ProfilePage() {
                     {watch.title} <span className="text-gray-500">({watch.mediaType})</span>
                   </p>
                   <p className="mt-1 text-sm text-gray-600">
-                    Watched on {sourceLabel}
+                    Status: {statusLabel}
+                    {sourceSuffix}
                   </p>
                 </li>
               );
