@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 
@@ -71,13 +72,21 @@ export function AuthPanel() {
       <div className="w-full max-w-md rounded-lg border border-gray-200 p-6">
         <p className="text-sm text-gray-600">Logged in as</p>
         <p className="font-medium">{session.user.email}</p>
-        <button
-          className="mt-4 rounded bg-black px-4 py-2 text-white"
-          onClick={() => signOut({ redirect: false })}
-          type="button"
-        >
-          Log out
-        </button>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link
+            className="inline-flex rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"
+            href="/profile"
+          >
+            Profile
+          </Link>
+          <button
+            className="rounded bg-black px-4 py-2 text-sm text-white"
+            onClick={() => signOut({ redirect: false })}
+            type="button"
+          >
+            Log out
+          </button>
+        </div>
       </div>
     );
   }
