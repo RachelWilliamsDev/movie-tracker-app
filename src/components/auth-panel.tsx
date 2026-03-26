@@ -1,10 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 
+const profileLinkClass =
+  "inline-flex rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 outline-none hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2";
+
+const primaryButtonFocus =
+  "outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2";
+
 export function AuthPanel() {
+  const pathname = usePathname();
   const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -74,13 +82,14 @@ export function AuthPanel() {
         <p className="font-medium">{session.user.email}</p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
-            className="inline-flex rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"
+            aria-current={pathname === "/profile" ? "page" : undefined}
+            className={profileLinkClass}
             href="/profile"
           >
             Profile
           </Link>
           <button
-            className="rounded bg-black px-4 py-2 text-sm text-white"
+            className={`rounded bg-black px-4 py-2 text-sm text-white ${primaryButtonFocus}`}
             onClick={() => signOut({ redirect: false })}
             type="button"
           >
