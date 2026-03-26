@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import type { WatchSource } from "@prisma/client";
+import type { WatchSource, WatchStatus } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -14,10 +14,21 @@ const WATCH_SOURCE_VALUES = [
 
 const WATCH_SOURCES = new Set<string>(WATCH_SOURCE_VALUES);
 
+/** Keep in sync with Prisma `WatchStatus` enum. */
+const WATCH_STATUS_VALUES = ["WATCHING", "COMPLETED", "WANT_TO_WATCH"] as const satisfies readonly WatchStatus[];
+
+const WATCH_STATUSES = new Set<string>(WATCH_STATUS_VALUES);
+
+/**
+ * MVP rule for `watchSource` vs `watchStatus`:
+ * - COMPLETED: `watchSource` is required (where you finished the title).
+ * - WATCHING | WANT_TO_WATCH: `watchSource` is optional; omit or null clears stored source.
+ */
 type Body = {
   contentId?: number;
   mediaType?: string;
-  watchSource?: string;
+  watchStatus?: string;
+  watchSource?: string | null;
 };
 
 export async function POST(request: Request) {
@@ -36,6 +47,7 @@ export async function POST(request: Request) {
 
   const contentId = Number(body.contentId);
   const mediaType = body.mediaType === "tv" ? "tv" : body.mediaType === "movie" ? "movie" : null;
+  const rawStatus = body.watchStatus;
   const rawSource = body.watchSource;
 
   if (!Number.isFinite(contentId) || contentId <= 0 || !mediaType) {
@@ -45,16 +57,37 @@ export async function POST(request: Request) {
     );
   }
 
-  if (typeof rawSource !== "string" || !WATCH_SOURCES.has(rawSource)) {
+  if (typeof rawStatus !== "string" || !WATCH_STATUSES.has(rawStatus)) {
     return NextResponse.json(
       {
-        error: "watchSource is required and must be one of: NETFLIX, DISNEY_PLUS, PRIME_VIDEO, OTHER"
+        error:
+          "watchStatus is required and must be one of: WATCHING, COMPLETED, WANT_TO_WATCH"
       },
       { status: 400 }
     );
   }
 
-  const watchSource = rawSource as WatchSource;
+  const watchStatus = rawStatus as WatchStatus;
+
+  let watchSource: WatchSource | null = null;
+  if (rawSource != null && rawSource !== "") {
+    if (typeof rawSource !== "string" || !WATCH_SOURCES.has(rawSource)) {
+      return NextResponse.json(
+        {
+          error: "watchSource must be one of: NETFLIX, DISNEY_PLUS, PRIME_VIDEO, OTHER"
+        },
+        { status: 400 }
+      );
+    }
+    watchSource = rawSource as WatchSource;
+  }
+
+  if (watchStatus === "COMPLETED" && watchSource == null) {
+    return NextResponse.json(
+      { error: "watchSource is required when watchStatus is COMPLETED" },
+      { status: 400 }
+    );
+  }
 
   try {
     await prisma.userWatch.upsert({
@@ -69,14 +102,16 @@ export async function POST(request: Request) {
         userId,
         contentId,
         mediaType,
+        watchStatus,
         watchSource
       },
       update: {
+        watchStatus,
         watchSource
       }
     });
 
-    return NextResponse.json({ ok: true, watchSource });
+    return NextResponse.json({ ok: true, watchStatus, watchSource });
   } catch {
     return NextResponse.json({ error: "Could not save watch." }, { status: 500 });
   }
