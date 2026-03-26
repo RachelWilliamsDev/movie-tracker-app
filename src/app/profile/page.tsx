@@ -30,7 +30,7 @@ export default async function ProfilePage() {
   const displayName = user.name ?? user.email ?? "User";
   const userId = user.id;
 
-  const [watched, ratings] =
+  const [watched, ratings, tvProgressRows] =
     userId != null
       ? await Promise.all([
           prisma.userWatch.findMany({
@@ -42,9 +42,60 @@ export default async function ProfilePage() {
             where: { userId },
             orderBy: { createdAt: "desc" },
             take: 20
+          }),
+          prisma.userTvEpisodeProgress.findMany({
+            where: {
+              userId,
+              mediaType: "tv",
+              seasonNumber: { in: [1, 2] }
+            }
           })
         ])
-      : [[], []];
+      : [[], [], []];
+
+  /** Distinct TV shows (max 20), ordered by most recently updated progress among seasons 1–2. */
+  const tvProgressByShow = new Map<
+    number,
+    { seasons: Map<number, number>; lastUpdated: Date }
+  >();
+  for (const row of tvProgressRows) {
+    let entry = tvProgressByShow.get(row.contentId);
+    if (!entry) {
+      entry = { seasons: new Map(), lastUpdated: row.updatedAt };
+      tvProgressByShow.set(row.contentId, entry);
+    }
+    entry.seasons.set(row.seasonNumber, row.episodeNumber);
+    if (row.updatedAt > entry.lastUpdated) {
+      entry.lastUpdated = row.updatedAt;
+    }
+  }
+  const tvProgressShowIds = [...tvProgressByShow.entries()]
+    .sort((a, b) => b[1].lastUpdated.getTime() - a[1].lastUpdated.getTime())
+    .slice(0, 20)
+    .map(([contentId]) => contentId);
+
+  const tvProgressWithTitles = await Promise.all(
+    tvProgressShowIds.map(async (contentId) => {
+      const entry = tvProgressByShow.get(contentId);
+      if (!entry) {
+        return null;
+      }
+      try {
+        const data = await tmdbFetch<TmdbTvDetail>(
+          `/tv/${contentId}`,
+          { language: "en-US" },
+          { revalidate: 3600 }
+        );
+        return { contentId, title: data.name, seasons: entry.seasons };
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  const resolvedTvProgress = tvProgressWithTitles.filter(
+    (p): p is NonNullable<(typeof tvProgressWithTitles)[number]> => p != null
+  );
 
   const ratingsWithTitles = await Promise.all(
     ratings.map(async (row) => {
@@ -129,6 +180,35 @@ export default async function ProfilePage() {
                 <p className="mt-1 text-sm text-gray-600">
                   Rating: {row.rating}/5
                 </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-gray-200 bg-white p-4">
+        <h2 className="text-base font-medium text-gray-900">TV progress</h2>
+
+        {resolvedTvProgress.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-600">No TV progress yet.</p>
+        ) : (
+          <ul className="mt-3 space-y-4">
+            {resolvedTvProgress.map((show) => (
+              <li key={`tv-progress-${show.contentId}`}>
+                <p className="text-sm font-medium text-gray-900">{show.title}</p>
+                <ul className="mt-1 space-y-1">
+                  {([1, 2] as const).map((seasonNum) => {
+                    const ep = show.seasons.get(seasonNum);
+                    if (ep == null) {
+                      return null;
+                    }
+                    return (
+                      <li key={`${show.contentId}-s${seasonNum}`} className="text-sm text-gray-600">
+                        Season {seasonNum}: Episode {ep}
+                      </li>
+                    );
+                  })}
+                </ul>
               </li>
             ))}
           </ul>
