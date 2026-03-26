@@ -36,6 +36,13 @@ type TmdbMovieCredits = {
   }>;
 };
 
+type TmdbTvCredits = {
+  cast: Array<{
+    name?: string;
+    order?: number;
+  }>;
+};
+
 /** First up to 3 cast names: TMDB `order` ascending, skip empty names. */
 function topMovieCastNames(cast: TmdbMovieCredits["cast"]): string[] {
   const sorted = [...cast].sort((a, b) => (a.order ?? 99999) - (b.order ?? 99999));
@@ -160,6 +167,7 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
   let posterPath: string | null;
   let genres: TmdbGenre[];
   let movieTopCastNames: string[] = [];
+  let tvTopCastNames: string[] = [];
 
   try {
     if (mediaType === "movie") {
@@ -192,6 +200,17 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
       overview = data.overview;
       posterPath = data.poster_path;
       genres = data.genres ?? [];
+
+      try {
+        const credits = await tmdbFetch<TmdbTvCredits>(
+          `/tv/${numericId}/credits`,
+          {},
+          { revalidate: 3600 }
+        );
+        tvTopCastNames = topMovieCastNames(credits.cast ?? []);
+      } catch {
+        tvTopCastNames = [];
+      }
     }
   } catch {
     notFound();
@@ -243,6 +262,21 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
               {movieTopCastNames.length > 0 ? (
                 <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-800">
                   {movieTopCastNames.map((name, index) => (
+                    <li key={`${name}-${index}`}>{name}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-sm text-gray-600">No cast listed.</p>
+              )}
+            </section>
+          ) : null}
+
+          {mediaType === "tv" ? (
+            <section className="mt-4">
+              <h2 className="text-sm font-medium text-gray-500">Cast</h2>
+              {tvTopCastNames.length > 0 ? (
+                <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-800">
+                  {tvTopCastNames.map((name, index) => (
                     <li key={`${name}-${index}`}>{name}</li>
                   ))}
                 </ul>
