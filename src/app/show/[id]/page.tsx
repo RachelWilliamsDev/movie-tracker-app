@@ -12,6 +12,7 @@ import { RatingPanel } from "@/components/rating-panel";
 import { TvEpisodeSection } from "./tv-episode-section";
 
 const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
+const PROFILE_BASE = "https://image.tmdb.org/t/p/w185";
 
 type TmdbGenre = { id: number; name: string };
 
@@ -33,6 +34,7 @@ type TmdbMovieCredits = {
   cast: Array<{
     name?: string;
     order?: number;
+    profile_path?: string | null;
   }>;
 };
 
@@ -40,23 +42,40 @@ type TmdbTvCredits = {
   cast: Array<{
     name?: string;
     order?: number;
+    profile_path?: string | null;
   }>;
 };
 
-/** First up to 3 cast names: TMDB `order` ascending, skip empty names. */
-function topMovieCastNames(cast: TmdbMovieCredits["cast"]): string[] {
+type TmdbCastEntry = {
+  name: string;
+  profile_path: string | null;
+};
+
+function getCastInitials(name: string): string {
+  const parts = name.split(/\s+/).map((p) => p.trim()).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const second = (parts.length > 1 ? parts[1]?.[0] : parts[0]?.[1]) ?? "";
+  return `${first}${second}`.toUpperCase();
+}
+
+/** First up to 3 cast entries: TMDB `order` ascending, skip empty names. */
+function topCastEntries(
+  cast: Array<{
+    name?: string;
+    order?: number;
+    profile_path?: string | null;
+  }>
+): TmdbCastEntry[] {
   const sorted = [...cast].sort((a, b) => (a.order ?? 99999) - (b.order ?? 99999));
-  const names: string[] = [];
+  const entries: TmdbCastEntry[] = [];
   for (const c of sorted) {
     const n = c.name?.trim();
-    if (n) {
-      names.push(n);
-    }
-    if (names.length >= 3) {
-      break;
-    }
+    if (!n) continue;
+    const p = (c.profile_path ?? null) ? String(c.profile_path) : null;
+    entries.push({ name: n, profile_path: p });
+    if (entries.length >= 3) break;
   }
-  return names;
+  return entries;
 }
 
 type PageProps = {
@@ -166,8 +185,8 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
   let overview: string;
   let posterPath: string | null;
   let genres: TmdbGenre[];
-  let movieTopCastNames: string[] = [];
-  let tvTopCastNames: string[] = [];
+  let movieTopCast: TmdbCastEntry[] = [];
+  let tvTopCast: TmdbCastEntry[] = [];
 
   try {
     if (mediaType === "movie") {
@@ -186,9 +205,9 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
           {},
           { revalidate: 3600 }
         );
-        movieTopCastNames = topMovieCastNames(credits.cast ?? []);
+        movieTopCast = topCastEntries(credits.cast ?? []);
       } catch {
-        movieTopCastNames = [];
+        movieTopCast = [];
       }
     } else {
       const data = await tmdbFetch<TmdbTvDetail>(
@@ -207,9 +226,9 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
           {},
           { revalidate: 3600 }
         );
-        tvTopCastNames = topMovieCastNames(credits.cast ?? []);
+        tvTopCast = topCastEntries(credits.cast ?? []);
       } catch {
-        tvTopCastNames = [];
+        tvTopCast = [];
       }
     }
   } catch {
@@ -259,10 +278,26 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
           {mediaType === "movie" ? (
             <section className="mt-4">
               <h2 className="text-sm font-medium text-gray-500">Cast</h2>
-              {movieTopCastNames.length > 0 ? (
-                <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-800">
-                  {movieTopCastNames.map((name, index) => (
-                    <li key={`${name}-${index}`}>{name}</li>
+              {movieTopCast.length > 0 ? (
+                <ul className="mt-2 space-y-2 text-sm text-gray-800">
+                  {movieTopCast.map((entry, index) => (
+                    <li key={`${entry.name}-${index}`} className="flex items-center gap-2">
+                      {entry.profile_path ? (
+                        <Image
+                          alt={entry.name}
+                          className="h-10 w-10 rounded-full object-cover"
+                          height={40}
+                          src={`${PROFILE_BASE}${entry.profile_path}`}
+                          unoptimized
+                          width={40}
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-700">
+                          {getCastInitials(entry.name)}
+                        </div>
+                      )}
+                      <span className="min-w-0 flex-1 truncate">{entry.name}</span>
+                    </li>
                   ))}
                 </ul>
               ) : (
@@ -274,10 +309,26 @@ export default async function ShowDetailPage({ params, searchParams }: PageProps
           {mediaType === "tv" ? (
             <section className="mt-4">
               <h2 className="text-sm font-medium text-gray-500">Cast</h2>
-              {tvTopCastNames.length > 0 ? (
-                <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-800">
-                  {tvTopCastNames.map((name, index) => (
-                    <li key={`${name}-${index}`}>{name}</li>
+              {tvTopCast.length > 0 ? (
+                <ul className="mt-2 space-y-2 text-sm text-gray-800">
+                  {tvTopCast.map((entry, index) => (
+                    <li key={`${entry.name}-${index}`} className="flex items-center gap-2">
+                      {entry.profile_path ? (
+                        <Image
+                          alt={entry.name}
+                          className="h-10 w-10 rounded-full object-cover"
+                          height={40}
+                          src={`${PROFILE_BASE}${entry.profile_path}`}
+                          unoptimized
+                          width={40}
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-700">
+                          {getCastInitials(entry.name)}
+                        </div>
+                      )}
+                      <span className="min-w-0 flex-1 truncate">{entry.name}</span>
+                    </li>
                   ))}
                 </ul>
               ) : (
