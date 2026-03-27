@@ -7,7 +7,7 @@ A small **Next.js** app for searching TMDB titles, tracking what you watch, per-
 - **Auth** — Sign up and sign in with email/password (sessions via NextAuth).
 - **Search** — Find movies and TV shows via The Movie Database (TMDB) API.
 - **Detail pages** — Movie and TV show views with overview, genres, and poster.
-- **Watch list** — Mark titles as watched and tag **where** you watched them.
+- **Watch list** — Set title status to **Watching**, **Completed**, or **Want to Watch**; for completed titles, tag **where** you watched.
 - **Ratings** — Save a **1–5** score per title (per user).
 - **TV progress** — Track current episode **per season** (does not overwrite other seasons).
 
