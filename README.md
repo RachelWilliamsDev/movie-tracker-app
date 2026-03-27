@@ -81,6 +81,41 @@ A small **Next.js** app for searching TMDB titles, tracking what you watch, per-
 | `npm run prisma:push` | Push schema to the database (`prisma db push`) |
 | `npm run db:test` | Quick DB connectivity check |
 
+## Docker (local dev)
+
+This repo includes an MVP Docker setup for local development (`app` + `postgres`).
+
+1. Copy env file (if you do not already have one):
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Start containers (build + run):
+
+   ```bash
+   docker compose up --build
+   ```
+
+   App: [http://127.0.0.1:3000](http://127.0.0.1:3000)
+
+3. Stop containers:
+
+   ```bash
+   docker compose down
+   ```
+
+4. Rebuild/reset database data (destructive to local DB volume):
+
+   ```bash
+   docker compose down -v
+   docker compose up --build
+   ```
+
+Notes:
+- `docker-compose.yml` sets `DATABASE_URL` to the Postgres container host (`db`) automatically.
+- Keep `TMDB_API_KEY` and `NEXTAUTH_SECRET` set in `.env` for app features/auth.
+
 ## Environment variables
 
 | Variable | Required | Purpose |
