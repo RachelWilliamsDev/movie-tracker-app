@@ -25,11 +25,23 @@ enum WatchStatus {
   WANT_TO_WATCH
 }
 
+enum ProfileVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+/// Approval-ready follow state scaffold (workflow handled in later tickets).
+enum FollowApprovalStatus {
+  APPROVED
+  PENDING
+}
+
 model User {
   id                String                  @id @default(cuid())
   email             String                  @unique
   name              String?
   password          String
+  profileVisibility ProfileVisibility       @default(PUBLIC)
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
   watches           UserWatch[]
@@ -85,12 +97,13 @@ model UserRating {
 
 /// Follow relationship between users.
 model UserFollow {
-  id          String   @id @default(cuid())
-  followerId  String
-  followingId String
-  createdAt   DateTime @default(now())
-  follower    User     @relation("UserFollowFollower", fields: [followerId], references: [id], onDelete: Cascade)
-  following   User     @relation("UserFollowFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+  id             String               @id @default(cuid())
+  followerId     String
+  followingId    String
+  approvalStatus FollowApprovalStatus @default(APPROVED)
+  createdAt      DateTime             @default(now())
+  follower       User                 @relation("UserFollowFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  following      User                 @relation("UserFollowFollowing", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followingId])
   @@index([followerId])
