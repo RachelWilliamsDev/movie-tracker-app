@@ -26,57 +26,73 @@ enum WatchStatus {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  watches   UserWatch[]
+  id                String                  @id @default(cuid())
+  email             String                  @unique
+  name              String?
+  password          String
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  watches           UserWatch[]
+  following         UserFollow[]            @relation("UserFollowFollower")
+  followers         UserFollow[]            @relation("UserFollowFollowing")
   tvEpisodeProgress UserTvEpisodeProgress[]
-  ratings   UserRating[]
+  ratings           UserRating[]
 }
 
 /// TMDB-backed watch record; one row per user + title (movie or TV).
 model UserWatch {
-  id           String        @id @default(cuid())
-  userId       String
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  contentId    Int
-  mediaType    String
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId   Int
+  mediaType   String
   /// Existing rows before this column map to COMPLETED via DB default (see FEAT-026).
-  watchStatus  WatchStatus   @default(COMPLETED)
-  watchSource  WatchSource?
-  createdAt    DateTime      @default(now())
+  watchStatus WatchStatus  @default(COMPLETED)
+  watchSource WatchSource?
+  createdAt   DateTime     @default(now())
 
   @@unique([userId, contentId, mediaType])
 }
 
 /// Current episode per TV season; one row per user + show + season.
 model UserTvEpisodeProgress {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  contentId      Int
-  mediaType      String
-  seasonNumber   Int
-  episodeNumber  Int
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId     Int
+  mediaType     String
+  seasonNumber  Int
+  episodeNumber Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@unique([userId, contentId, mediaType, seasonNumber])
 }
 
 /// User score for a movie or TV title (1–5). Independent of watch / episode progress.
 model UserRating {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  contentId  Int
-  mediaType  String
-  rating     Int
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId Int
+  mediaType String
+  rating    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, contentId, mediaType])
+}
+
+/// Follow relationship between users.
+model UserFollow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("UserFollowFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("UserFollowFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
 }
