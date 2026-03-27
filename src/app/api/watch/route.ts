@@ -21,7 +21,7 @@ const WATCH_STATUSES = new Set<string>(WATCH_STATUS_VALUES);
 
 /**
  * MVP rule for `watchSource` vs `watchStatus`:
- * - COMPLETED: `watchSource` is required (where you finished the title).
+ * - COMPLETED: when `watchSource` is omitted/null, default to OTHER.
  * - WATCHING | WANT_TO_WATCH: `watchSource` is optional; omit or null clears stored source.
  */
 type Body = {
@@ -83,10 +83,7 @@ export async function POST(request: Request) {
   }
 
   if (watchStatus === "COMPLETED" && watchSource == null) {
-    return NextResponse.json(
-      { error: "watchSource is required when watchStatus is COMPLETED" },
-      { status: 400 }
-    );
+    watchSource = "OTHER";
   }
 
   try {

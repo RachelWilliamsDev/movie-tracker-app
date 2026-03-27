@@ -129,6 +129,7 @@ export function MarkWatchedButton({
     setStatus(next);
 
     if (next === "COMPLETED") {
+      void postWatch("COMPLETED", watchSource ?? "OTHER");
       return;
     }
 
