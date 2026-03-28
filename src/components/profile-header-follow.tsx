@@ -12,6 +12,10 @@ type Props = {
   initialIsFollowing: boolean;
   displayName: string;
   memberLabel: string;
+  /** When false (e.g. logged-out viewer), hide follow button and prompt to sign in. */
+  showFollowAction?: boolean;
+  /** When false, skip periodic follow-state refresh (e.g. logged-out viewer). Default true. */
+  enablePeriodicRefresh?: boolean;
 };
 
 export function ProfileHeaderFollow({
@@ -21,7 +25,9 @@ export function ProfileHeaderFollow({
   initialFollowingCount,
   initialIsFollowing,
   displayName,
-  memberLabel
+  memberLabel,
+  showFollowAction = true,
+  enablePeriodicRefresh = true
 }: Props) {
   const {
     followersCount,
@@ -36,7 +42,8 @@ export function ProfileHeaderFollow({
     isOwnProfile,
     initialFollowersCount,
     initialFollowingCount,
-    initialIsFollowing
+    initialIsFollowing,
+    enablePeriodicRefresh
   });
 
   return (
@@ -71,15 +78,24 @@ export function ProfileHeaderFollow({
       </div>
       {!isOwnProfile ? (
         <div className="mt-4">
-          <Button
-            aria-busy={pending}
-            disabled={pending}
-            onClick={() => void toggleFollow()}
-            type="button"
-            variant={isFollowing ? "outline" : "default"}
-          >
-            {pending ? "Updating…" : isFollowing ? "Unfollow" : "Follow"}
-          </Button>
+          {showFollowAction ? (
+            <Button
+              aria-busy={pending}
+              disabled={pending}
+              onClick={() => void toggleFollow()}
+              type="button"
+              variant={isFollowing ? "outline" : "default"}
+            >
+              {pending ? "Updating…" : isFollowing ? "Unfollow" : "Follow"}
+            </Button>
+          ) : (
+            <p className="text-sm text-gray-600">
+              <Link className="font-medium underline" href="/">
+                Sign in
+              </Link>{" "}
+              to follow this member.
+            </p>
+          )}
         </div>
       ) : null}
       {successFeedback ? (
