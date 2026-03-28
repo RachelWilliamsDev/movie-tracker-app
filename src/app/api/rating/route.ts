@@ -1,10 +1,46 @@
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
+import { resolveUserActivityAccess } from "@/lib/activity-visibility";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const MIN = 1;
 const MAX = 5;
+
+function parseTargetUserId(request: Request): string | null {
+  const url = new URL(request.url);
+  const raw = url.searchParams.get("userId")?.trim() ?? "";
+  return raw.length > 0 ? raw : null;
+}
+
+export async function GET(request: Request) {
+  const targetUserId = parseTargetUserId(request);
+  if (!targetUserId) {
+    return NextResponse.json({ error: "userId query parameter is required" }, { status: 400 });
+  }
+
+  const session = await getServerSession(authOptions);
+  const viewerId = session?.user?.id ?? null;
+
+  try {
+    const access = await resolveUserActivityAccess(viewerId, targetUserId);
+    if (!access.targetExists) {
+      return NextResponse.json({ error: "User not found." }, { status: 404 });
+    }
+    if (!access.allowed) {
+      return NextResponse.json({ ok: true, ratings: [] });
+    }
+
+    const ratings = await prisma.userRating.findMany({
+      where: { userId: targetUserId },
+      orderBy: { createdAt: "desc" }
+    });
+
+    return NextResponse.json({ ok: true, ratings });
+  } catch {
+    return NextResponse.json({ error: "Could not load ratings." }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);

@@ -4,8 +4,6 @@ import { authOptions } from "@/lib/auth";
 import { countFollowers, countFollowing, getFollowState } from "@/lib/follow-service";
 import { prisma } from "@/lib/prisma";
 
-type ProfileVisibility = "PUBLIC";
-
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const targetUserId = url.searchParams.get("userId")?.trim() ?? "";
@@ -15,7 +13,7 @@ export async function GET(request: Request) {
 
   const targetUser = await prisma.user.findUnique({
     where: { id: targetUserId },
-    select: { id: true }
+    select: { id: true, profileVisibility: true }
   });
   if (!targetUser) {
     return NextResponse.json({ error: "User not found." }, { status: 404 });
@@ -24,7 +22,7 @@ export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   const viewerId = session?.user?.id ?? null;
   const isOwnProfile = viewerId === targetUserId;
-  const profileVisibility: ProfileVisibility = "PUBLIC";
+  const profileVisibility = targetUser.profileVisibility;
 
   try {
     if (!viewerId) {

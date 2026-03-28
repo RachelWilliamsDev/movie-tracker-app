@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth/next";
+import { resolveUserActivityAccess } from "@/lib/activity-visibility";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { tmdbFetch } from "@/lib/tmdb";
@@ -9,12 +11,16 @@ import { WATCH_STATUS_LABEL } from "@/lib/watch-status";
 type TmdbMovieDetail = { title: string };
 type TmdbTvDetail = { name: string };
 
-export default async function ProfilePage() {
+type PageProps = {
+  searchParams: Promise<{ userId?: string }>;
+};
+
+export default async function ProfilePage({ searchParams }: PageProps) {
   const session = await getServerSession(authOptions);
   const user = session?.user;
 
   // Logged out: show prompt only; do not attempt to render profile data.
-  if (!user) {
+  if (!user?.id) {
     return (
       <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 p-8">
         <Link className="text-sm text-gray-600 underline" href="/">
@@ -28,31 +34,44 @@ export default async function ProfilePage() {
     );
   }
 
-  const displayName = user.name ?? user.email ?? "User";
-  const userId = user.id;
+  const sp = await searchParams;
+  const requestedId = sp.userId?.trim();
+  const viewerId = user.id;
+  const targetUserId = requestedId && requestedId.length > 0 ? requestedId : viewerId;
 
-  const [watched, ratings, tvProgressRows] =
-    userId != null
-      ? await Promise.all([
-          prisma.userWatch.findMany({
-            where: { userId },
-            orderBy: { createdAt: "desc" },
-            take: 20
-          }),
-          prisma.userRating.findMany({
-            where: { userId },
-            orderBy: { createdAt: "desc" },
-            take: 20
-          }),
-          prisma.userTvEpisodeProgress.findMany({
-            where: {
-              userId,
-              mediaType: "tv",
-              seasonNumber: { in: [1, 2] }
-            }
-          })
-        ])
-      : [[], [], []];
+  const profileUser = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { id: true, name: true, email: true }
+  });
+  if (!profileUser) {
+    notFound();
+  }
+
+  const access = await resolveUserActivityAccess(viewerId, targetUserId);
+  const displayName = profileUser.name?.trim() || profileUser.email || "User";
+  const isOwnProfile = viewerId === targetUserId;
+
+  const [watched, ratings, tvProgressRows] = access.allowed
+    ? await Promise.all([
+        prisma.userWatch.findMany({
+          where: { userId: targetUserId },
+          orderBy: { createdAt: "desc" },
+          take: 20
+        }),
+        prisma.userRating.findMany({
+          where: { userId: targetUserId },
+          orderBy: { createdAt: "desc" },
+          take: 20
+        }),
+        prisma.userTvEpisodeProgress.findMany({
+          where: {
+            userId: targetUserId,
+            mediaType: "tv",
+            seasonNumber: { in: [1, 2] }
+          }
+        })
+      ])
+    : [[], [], []];
 
   /** Distinct TV shows (max 20), ordered by most recently updated progress among seasons 1–2. */
   const tvProgressByShow = new Map<
@@ -158,10 +177,14 @@ export default async function ProfilePage() {
       <Link className="text-sm text-gray-600 underline" href="/">
         ← Back
       </Link>
-      <h1 className="text-2xl font-semibold">Your profile</h1>
+      <h1 className="text-2xl font-semibold">
+        {isOwnProfile ? "Your profile" : "Profile"}
+      </h1>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4">
-        <p className="text-sm text-gray-500">Signed in as</p>
+        <p className="text-sm text-gray-500">
+          {isOwnProfile ? "Signed in as" : "Member"}
+        </p>
         <p className="mt-1 text-lg font-medium text-gray-900">{displayName}</p>
       </section>
 
