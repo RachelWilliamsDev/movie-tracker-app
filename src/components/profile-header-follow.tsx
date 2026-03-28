@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -135,6 +136,23 @@ export function ProfileHeaderFollow({
         <span className="font-medium text-gray-900">{followingCount}</span>{" "}
         following
       </p>
+      <nav
+        aria-label="Followers and following lists"
+        className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm"
+      >
+        <Link
+          className="font-medium text-gray-900 underline-offset-4 hover:underline"
+          href={`/profile/followers?userId=${encodeURIComponent(targetUserId)}`}
+        >
+          View followers
+        </Link>
+        <Link
+          className="font-medium text-gray-900 underline-offset-4 hover:underline"
+          href={`/profile/following?userId=${encodeURIComponent(targetUserId)}`}
+        >
+          View following
+        </Link>
+      </nav>
       {!isOwnProfile ? (
         <div className="mt-4">
           <Button
