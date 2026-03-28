@@ -10,7 +10,8 @@ export const USER_SEARCH_MAX_LIMIT = 20;
 export const USER_SUGGESTIONS_MIN_LIMIT = 5;
 export const USER_SUGGESTIONS_MAX_LIMIT = 10;
 
-const DEFAULT_SUGGESTIONS_LIMIT = 8;
+/** Default `limit` for suggestions API and Discover UI (FEAT-122 / FEAT-123). */
+export const USER_SUGGESTIONS_DEFAULT_LIMIT = 8;
 
 export function clampUserSearchLimit(raw: string | null): number {
   const n = Number.parseInt(raw ?? "20", 10);
@@ -21,9 +22,9 @@ export function clampUserSearchLimit(raw: string | null): number {
 }
 
 export function clampSuggestionsLimit(raw: string | null): number {
-  const n = Number.parseInt(raw ?? String(DEFAULT_SUGGESTIONS_LIMIT), 10);
+  const n = Number.parseInt(raw ?? String(USER_SUGGESTIONS_DEFAULT_LIMIT), 10);
   if (!Number.isFinite(n) || n < USER_SUGGESTIONS_MIN_LIMIT) {
-    return DEFAULT_SUGGESTIONS_LIMIT;
+    return USER_SUGGESTIONS_DEFAULT_LIMIT;
   }
   return Math.min(Math.floor(n), USER_SUGGESTIONS_MAX_LIMIT);
 }
