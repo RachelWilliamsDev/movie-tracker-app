@@ -1,7 +1,43 @@
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
+import { resolveUserActivityAccess } from "@/lib/activity-visibility";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+function parseTargetUserId(request: Request): string | null {
+  const url = new URL(request.url);
+  const raw = url.searchParams.get("userId")?.trim() ?? "";
+  return raw.length > 0 ? raw : null;
+}
+
+export async function GET(request: Request) {
+  const targetUserId = parseTargetUserId(request);
+  if (!targetUserId) {
+    return NextResponse.json({ error: "userId query parameter is required" }, { status: 400 });
+  }
+
+  const session = await getServerSession(authOptions);
+  const viewerId = session?.user?.id ?? null;
+
+  try {
+    const access = await resolveUserActivityAccess(viewerId, targetUserId);
+    if (!access.targetExists) {
+      return NextResponse.json({ error: "User not found." }, { status: 404 });
+    }
+    if (!access.allowed) {
+      return NextResponse.json({ ok: true, progress: [] });
+    }
+
+    const progress = await prisma.userTvEpisodeProgress.findMany({
+      where: { userId: targetUserId },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }]
+    });
+
+    return NextResponse.json({ ok: true, progress });
+  } catch {
+    return NextResponse.json({ error: "Could not load progress." }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
