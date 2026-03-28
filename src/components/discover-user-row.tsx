@@ -48,7 +48,7 @@ export function DiscoverUserRow({
   viewerId: string;
 }) {
   const isSelf = hit.userId === viewerId;
-  const profileHref = `/profile?userId=${encodeURIComponent(hit.userId)}`;
+  const profileHref = `/profile/${encodeURIComponent(hit.userId)}`;
 
   const {
     isFollowing,

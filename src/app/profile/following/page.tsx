@@ -32,7 +32,7 @@ export default async function FollowingPage({ searchParams }: PageProps) {
   const backHref =
     targetUserId === session.user.id
       ? "/profile"
-      : `/profile?userId=${encodeURIComponent(targetUserId)}`;
+      : `/profile/${encodeURIComponent(targetUserId)}`;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 p-8">

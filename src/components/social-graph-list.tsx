@@ -162,7 +162,7 @@ export function SocialGraphList({ mode, targetUserId }: Props) {
               <li key={`${mode}-${item.userId}`}>
                 <Link
                   className="flex min-h-[56px] items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 transition-colors hover:bg-gray-50"
-                  href={`/profile?userId=${encodeURIComponent(item.userId)}`}
+                  href={`/profile/${encodeURIComponent(item.userId)}`}
                 >
                   <ListAvatar item={item} />
                   <span className="font-medium text-gray-900">{item.username}</span>
