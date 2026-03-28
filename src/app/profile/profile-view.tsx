@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProfileHeaderFollow } from "@/components/profile-header-follow";
+import "@/lib/profile-discovery-privacy";
 import { resolveUserActivityAccess } from "@/lib/activity-visibility";
 import { countFollowers, countFollowing, getFollowState } from "@/lib/follow-service";
 import { prisma } from "@/lib/prisma";

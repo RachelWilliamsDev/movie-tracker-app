@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { jsonApiError } from "@/lib/api-errors";
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_LIMIT = 20;
@@ -26,13 +27,21 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const userId = url.searchParams.get("userId")?.trim() ?? "";
   if (!userId) {
-    return NextResponse.json({ error: "userId is required" }, { status: 400 });
+    return jsonApiError(400, "userId is required", "BAD_REQUEST");
   }
 
   const limit = parseLimit(url.searchParams.get("limit"));
   const cursor = url.searchParams.get("cursor")?.trim() || null;
 
   try {
+    const exists = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true }
+    });
+    if (!exists) {
+      return jsonApiError(404, "User not found.", "NOT_FOUND");
+    }
+
     const rows = await prisma.userFollow.findMany({
       where: { followingId: userId },
       include: {
@@ -70,6 +79,10 @@ export async function GET(request: Request) {
       }
     });
   } catch {
-    return NextResponse.json({ error: "Could not fetch followers." }, { status: 500 });
+    return jsonApiError(
+      500,
+      "Could not fetch followers.",
+      "FOLLOWERS_LIST_FAILED"
+    );
   }
 }

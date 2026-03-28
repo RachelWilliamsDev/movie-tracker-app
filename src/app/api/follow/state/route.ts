@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
+import { jsonApiError } from "@/lib/api-errors";
 import { countFollowers, countFollowing, getFollowState } from "@/lib/follow-service";
 import { prisma } from "@/lib/prisma";
 
@@ -8,7 +9,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const targetUserId = url.searchParams.get("userId")?.trim() ?? "";
   if (!targetUserId) {
-    return NextResponse.json({ error: "userId is required" }, { status: 400 });
+    return jsonApiError(400, "userId is required", "BAD_REQUEST");
   }
 
   const targetUser = await prisma.user.findUnique({
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
     select: { id: true, profileVisibility: true }
   });
   if (!targetUser) {
-    return NextResponse.json({ error: "User not found." }, { status: 404 });
+    return jsonApiError(404, "User not found.", "NOT_FOUND");
   }
 
   const session = await getServerSession(authOptions);
@@ -51,6 +52,10 @@ export async function GET(request: Request) {
       profileVisibility
     });
   } catch {
-    return NextResponse.json({ error: "Could not fetch follow state." }, { status: 500 });
+    return jsonApiError(
+      500,
+      "Could not fetch follow state.",
+      "FOLLOW_STATE_FAILED"
+    );
   }
 }
