@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
+import { scheduleUserActivityEvent } from "@/lib/activity-events";
 import { resolveUserActivityAccess } from "@/lib/activity-visibility";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -94,6 +95,12 @@ export async function POST(request: Request) {
       update: {
         rating
       }
+    });
+
+    scheduleUserActivityEvent(userId, "RATED", {
+      contentId,
+      mediaType,
+      rating
     });
 
     return NextResponse.json({ ok: true, rating });

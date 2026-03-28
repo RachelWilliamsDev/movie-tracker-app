@@ -30,6 +30,12 @@ enum ProfileVisibility {
   PRIVATE
 }
 
+/// Feed-ready social actions (best-effort writes from product flows).
+enum ActivityEventType {
+  WATCH_COMPLETED
+  RATED
+}
+
 /// Approval-ready follow state scaffold (workflow handled in later tickets).
 enum FollowApprovalStatus {
   APPROVED
@@ -49,6 +55,19 @@ model User {
   followers         UserFollow[]            @relation("UserFollowFollowing")
   tvEpisodeProgress UserTvEpisodeProgress[]
   ratings           UserRating[]
+  activityEvents    UserActivityEvent[]
+}
+
+/// Append-only activity log for a future social feed; metadata holds TMDB keys + display hints.
+model UserActivityEvent {
+  id        String            @id @default(cuid())
+  actorId   String
+  actor     User              @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  type      ActivityEventType
+  metadata  Json
+  createdAt DateTime          @default(now())
+
+  @@index([actorId, createdAt(sort: Desc)])
 }
 
 /// TMDB-backed watch record; one row per user + title (movie or TV).
