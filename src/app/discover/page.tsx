@@ -5,11 +5,17 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { DiscoverSuggestionsSection } from "@/components/discover-suggestions-section";
 import { DiscoverUserRow } from "@/components/discover-user-row";
+import {
+  DiscoverErrorPanel,
+  DiscoverMutedPanel,
+  DiscoverUserRowSkeletonList
+} from "@/components/discover-ux";
 import { Button } from "@/components/ui/button";
 import type { PublicUserSearchHit } from "@/lib/user-search";
 
 const DEBOUNCE_MS = 350;
 const LIMIT = 20;
+const SEARCH_SKELETON_ROWS = 4;
 
 export default function DiscoverPage() {
   const { data: session, status } = useSession();
@@ -89,8 +95,18 @@ export default function DiscoverPage() {
 
   if (status === "loading") {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-8">
-        <p className="text-sm text-gray-600">Loading…</p>
+      <main className="mx-auto max-w-3xl px-4 py-6 sm:py-8">
+        <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl">
+          Discover users
+        </h1>
+        <p className="mt-1 text-sm text-gray-600">
+          Search by display name or email.
+        </p>
+        <DiscoverUserRowSkeletonList
+          ariaLabel="Loading discover"
+          className="mt-6"
+          count={3}
+        />
       </main>
     );
   }
@@ -143,29 +159,22 @@ export default function DiscoverPage() {
       </label>
 
       {loading ? (
-        <p
-          aria-live="polite"
-          className="mt-4 text-sm text-gray-600"
-        >
-          Searching…
-        </p>
+        <DiscoverUserRowSkeletonList
+          ariaLabel="Loading search results"
+          className="mt-4"
+          count={SEARCH_SKELETON_ROWS}
+        />
       ) : null}
 
       {error && error !== "UNAUTHORIZED" ? (
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          <p>{error}</p>
-          <Button
-            className="mt-3"
-            onClick={() => {
-              setError(null);
-              setRetryNonce((n) => n + 1);
-            }}
-            type="button"
-            variant="outline"
-          >
-            Retry
-          </Button>
-        </div>
+        <DiscoverErrorPanel
+          className="mt-4"
+          message={error}
+          onRetry={() => {
+            setError(null);
+            setRetryNonce((n) => n + 1);
+          }}
+        />
       ) : null}
 
       {error === "UNAUTHORIZED" ? (
@@ -179,13 +188,18 @@ export default function DiscoverPage() {
       ) : null}
 
       {idle ? (
-        <p className="mt-6 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-600">
+        <DiscoverMutedPanel className="mt-6">
           Search by name or email to find people you know.
-        </p>
+        </DiscoverMutedPanel>
       ) : null}
 
       {!idle && !loading && debouncedQuery.length > 0 && !error && users.length === 0 ? (
-        <p className="mt-6 text-sm text-gray-600">No users match that search.</p>
+        <DiscoverMutedPanel className="mt-6">
+          <span className="font-medium text-gray-800">No results</span>
+          <span className="mt-2 block">
+            No one matches that search. Try a different name or email.
+          </span>
+        </DiscoverMutedPanel>
       ) : null}
 
       {users.length > 0 && session?.user?.id ? (

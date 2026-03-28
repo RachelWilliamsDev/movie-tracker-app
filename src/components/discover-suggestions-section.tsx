@@ -3,19 +3,28 @@
 /**
  * FEAT-123 (MEM-61): suggested users above search on Discover — client fetch to
  * GET /api/users/suggestions (FEAT-122). Same row UX as search (`DiscoverUserRow`).
+ * FEAT-125: loading skeletons, empty panel, shared error pattern with search.
  */
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { DiscoverUserRow } from "@/components/discover-user-row";
-import { Button } from "@/components/ui/button";
+import {
+  DiscoverErrorPanel,
+  DiscoverMutedPanel,
+  DiscoverUserRowSkeletonList
+} from "@/components/discover-ux";
 import {
   USER_SUGGESTIONS_DEFAULT_LIMIT,
   type PublicUserSearchHit
 } from "@/lib/user-search";
 
+const SUGGESTIONS_SKELETON_ROWS = 4;
+
 export function DiscoverSuggestionsSection({ viewerId }: { viewerId: string }) {
   const [suggested, setSuggested] = useState<PublicUserSearchHit[]>([]);
-  const [suggestedLoading, setSuggestedLoading] = useState(false);
+  /** Start true to avoid a flash of the empty state before the first fetch runs. */
+  const [suggestedLoading, setSuggestedLoading] = useState(true);
   const [suggestedError, setSuggestedError] = useState<string | null>(null);
   const [suggestedRetryNonce, setSuggestedRetryNonce] = useState(0);
 
@@ -69,48 +78,58 @@ export function DiscoverSuggestionsSection({ viewerId }: { viewerId: string }) {
   }, [viewerId, suggestedRetryNonce]);
 
   return (
-    <>
+    <section aria-labelledby="discover-suggested-heading" className="mt-6">
+      <h2
+        className="text-base font-semibold text-gray-900"
+        id="discover-suggested-heading"
+      >
+        Suggested for you
+      </h2>
+
       {suggestedLoading ? (
-        <p aria-live="polite" className="mt-6 text-sm text-gray-600">
-          Loading suggestions…
+        <DiscoverUserRowSkeletonList
+          ariaLabel="Loading suggested people"
+          className="mt-3"
+          count={SUGGESTIONS_SKELETON_ROWS}
+        />
+      ) : null}
+
+      {!suggestedLoading &&
+      suggestedError &&
+      suggestedError !== "UNAUTHORIZED" ? (
+        <DiscoverErrorPanel
+          className="mt-3"
+          message={suggestedError}
+          onRetry={() => {
+            setSuggestedError(null);
+            setSuggestedRetryNonce((n) => n + 1);
+          }}
+        />
+      ) : null}
+
+      {!suggestedLoading && suggestedError === "UNAUTHORIZED" ? (
+        <p className="mt-3 text-sm text-gray-600">
+          Your session expired.{" "}
+          <Link className="font-medium underline" href="/">
+            Sign in again
+          </Link>
+          .
         </p>
       ) : null}
 
-      {suggestedError && suggestedError !== "UNAUTHORIZED" ? (
-        <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          <p>{suggestedError}</p>
-          <Button
-            className="mt-3"
-            onClick={() => {
-              setSuggestedError(null);
-              setSuggestedRetryNonce((n) => n + 1);
-            }}
-            type="button"
-            variant="outline"
-          >
-            Retry
-          </Button>
-        </div>
+      {!suggestedLoading && !suggestedError && suggested.length > 0 ? (
+        <ul className="mt-3 list-none space-y-2 p-0" role="list">
+          {suggested.map((u) => (
+            <DiscoverUserRow key={u.userId} hit={u} viewerId={viewerId} />
+          ))}
+        </ul>
       ) : null}
 
-      {!suggestedLoading && !suggestedError && suggested.length > 0 ? (
-        <section
-          aria-labelledby="discover-suggested-heading"
-          className="mt-6"
-        >
-          <h2
-            className="text-base font-semibold text-gray-900"
-            id="discover-suggested-heading"
-          >
-            Suggested for you
-          </h2>
-          <ul className="mt-3 list-none space-y-2 p-0" role="list">
-            {suggested.map((u) => (
-              <DiscoverUserRow key={u.userId} hit={u} viewerId={viewerId} />
-            ))}
-          </ul>
-        </section>
+      {!suggestedLoading && !suggestedError && suggested.length === 0 ? (
+        <DiscoverMutedPanel className="mt-3">
+          No suggestions right now. Search by name or email above to find people.
+        </DiscoverMutedPanel>
       ) : null}
-    </>
+    </section>
   );
 }
