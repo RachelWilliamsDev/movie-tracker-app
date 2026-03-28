@@ -4,6 +4,8 @@ import type { PrismaClient } from "@prisma/client";
 import {
   USER_SEARCH_MAX_LIMIT,
   USER_SUGGESTIONS_MAX_LIMIT,
+  USER_SUGGESTIONS_MIN_LIMIT,
+  type SuggestUsersDb,
   clampSuggestionsLimit,
   clampUserSearchLimit,
   mapUserToSearchHit,
@@ -106,27 +108,22 @@ test("searchUsersForViewer sets isFollowing from approved follows", async () => 
   assert.equal(out[0]?.isFollowing, true);
 });
 
-test("clampSuggestionsLimit defaults and caps", () => {
+test("clampSuggestionsLimit defaults and FEAT-122 5–10 band", () => {
   assert.equal(clampSuggestionsLimit(null), 8);
-  assert.equal(clampSuggestionsLimit("4"), 4);
+  assert.equal(clampSuggestionsLimit("5"), USER_SUGGESTIONS_MIN_LIMIT);
+  assert.equal(clampSuggestionsLimit("10"), USER_SUGGESTIONS_MAX_LIMIT);
+  assert.equal(clampSuggestionsLimit("4"), 8);
   assert.equal(clampSuggestionsLimit("999"), USER_SUGGESTIONS_MAX_LIMIT);
   assert.equal(clampSuggestionsLimit("0"), 8);
 });
 
-test("suggestUsersForViewer excludes viewer and users already followed", async () => {
-  let captured: { where: object; take: number } | null = null;
+test("suggestUsersForViewer maps $queryRaw rows", async () => {
   const db = {
-    user: {
-      findMany: async (args: { where: object; take: number }) => {
-        captured = { where: args.where, take: args.take };
-        return [{ id: "u2", email: "b@b.com", name: "Bo" }];
-      }
-    }
-  } as unknown as Pick<PrismaClient, "user">;
+    $queryRaw: async () => [{ id: "u2", email: "b@b.com", name: "Bo" }]
+  } as unknown as SuggestUsersDb;
 
   const out = await suggestUsersForViewer("me", 6, db);
   assert.equal(out.length, 1);
+  assert.equal(out[0]?.userId, "u2");
   assert.equal(out[0]?.isFollowing, false);
-  assert.ok(captured);
-  assert.equal(captured!.take, 6);
 });
