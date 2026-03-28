@@ -129,30 +129,32 @@ export function ProfileHeaderFollow({
     <div>
       <p className="text-sm text-gray-500">{memberLabel}</p>
       <p className="mt-1 text-lg font-medium text-gray-900">{displayName}</p>
-      <p className="mt-3 text-sm text-gray-600">
-        <span className="font-medium text-gray-900">{followersCount}</span>{" "}
-        followers
-        <span className="mx-1.5 text-gray-400">·</span>
-        <span className="font-medium text-gray-900">{followingCount}</span>{" "}
-        following
-      </p>
-      <nav
-        aria-label="Followers and following lists"
-        className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm"
+      <div
+        className="mt-3 flex flex-wrap gap-2"
+        role="group"
+        aria-label="Followers and following"
       >
-        <Link
-          className="font-medium text-gray-900 underline-offset-4 hover:underline"
-          href={`/profile/followers?userId=${encodeURIComponent(targetUserId)}`}
-        >
-          View followers
-        </Link>
-        <Link
-          className="font-medium text-gray-900 underline-offset-4 hover:underline"
-          href={`/profile/following?userId=${encodeURIComponent(targetUserId)}`}
-        >
-          View following
-        </Link>
-      </nav>
+        <Button asChild size="sm" variant="outline">
+          <Link
+            href={`/profile/followers?userId=${encodeURIComponent(targetUserId)}`}
+          >
+            <span className="tabular-nums font-semibold text-gray-900">
+              {followersCount}
+            </span>
+            <span className="text-gray-600"> followers</span>
+          </Link>
+        </Button>
+        <Button asChild size="sm" variant="outline">
+          <Link
+            href={`/profile/following?userId=${encodeURIComponent(targetUserId)}`}
+          >
+            <span className="tabular-nums font-semibold text-gray-900">
+              {followingCount}
+            </span>
+            <span className="text-gray-600"> following</span>
+          </Link>
+        </Button>
+      </div>
       {!isOwnProfile ? (
         <div className="mt-4">
           <Button
