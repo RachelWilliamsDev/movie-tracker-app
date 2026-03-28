@@ -5,6 +5,7 @@ import "@/lib/profile-discovery-privacy";
 import { resolveUserActivityAccess } from "@/lib/activity-visibility";
 import { countFollowers, countFollowing, getFollowState } from "@/lib/follow-service";
 import { prisma } from "@/lib/prisma";
+import { resolveProfileViewerContext } from "@/lib/profile-viewer-context";
 import { tmdbFetch } from "@/lib/tmdb";
 import { WATCH_SOURCE_LABEL } from "@/lib/watch-source";
 import { WATCH_STATUS_LABEL } from "@/lib/watch-status";
@@ -19,7 +20,12 @@ export async function ProfileView({
   targetUserId: string;
   viewerId: string | null;
 }) {
-  const id = targetUserId.trim();
+  const {
+    normalizedTargetUserId: id,
+    viewerSignedIn,
+    isOwnProfile,
+    showFollowAction
+  } = resolveProfileViewerContext(viewerId, targetUserId);
   if (!id) {
     notFound();
   }
@@ -34,9 +40,6 @@ export async function ProfileView({
 
   const access = await resolveUserActivityAccess(viewerId, id);
   const displayName = profileUser.name?.trim() || profileUser.email || "User";
-  const isOwnProfile = viewerId != null && viewerId === id;
-  const showFollowAction = viewerId != null && !isOwnProfile;
-  const viewerSignedIn = viewerId != null;
 
   const { followersCount, followingCount, initialIsFollowing } = isOwnProfile
     ? {
@@ -186,6 +189,7 @@ export async function ProfileView({
         {isOwnProfile ? "Your profile" : "Profile"}
       </h1>
 
+      {/* FEAT-126: same `ProfileHeaderFollow` for /profile and /profile/[userId] */}
       <section className="rounded-lg border border-gray-200 bg-white p-4">
         <ProfileHeaderFollow
           key={id}

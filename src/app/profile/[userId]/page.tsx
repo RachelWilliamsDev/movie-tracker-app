@@ -5,13 +5,15 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ProfileView } from "../profile-view";
 
+/** Public profile (FEAT-119); social header via shared `ProfileView` (FEAT-126). */
+
 type PageProps = {
   params: Promise<{ userId: string }>;
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { userId } = await params;
-  const id = userId.trim();
+  const { userId: raw } = await params;
+  const id = raw.trim();
   if (!id) {
     return { title: "Profile | MovieApp" };
   }
@@ -32,9 +34,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function ProfileByUserIdPage({ params }: PageProps) {
-  const { userId } = await params;
+  const { userId: raw } = await params;
+  const targetUserId = raw.trim();
+  if (!targetUserId) {
+    notFound();
+  }
+
   const session = await getServerSession(authOptions);
   const viewerId = session?.user?.id ?? null;
 
-  return <ProfileView targetUserId={userId} viewerId={viewerId} />;
+  return <ProfileView targetUserId={targetUserId} viewerId={viewerId} />;
 }
