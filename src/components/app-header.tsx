@@ -13,6 +13,7 @@ export function AppHeader() {
 
   const onHome = pathname === "/";
   const onProfile = pathname === "/profile";
+  const onFeed = pathname === "/feed";
 
   return (
     <header className="border-b border-gray-200 bg-white">
@@ -28,13 +29,22 @@ export function AppHeader() {
           Home
         </Link>
         {status === "authenticated" && session?.user ? (
-          <Link
-            aria-current={onProfile ? "page" : undefined}
-            className={navLinkClass}
-            href="/profile"
-          >
-            Profile
-          </Link>
+          <>
+            <Link
+              aria-current={onFeed ? "page" : undefined}
+              className={navLinkClass}
+              href="/feed"
+            >
+              Feed
+            </Link>
+            <Link
+              aria-current={onProfile ? "page" : undefined}
+              className={navLinkClass}
+              href="/profile"
+            >
+              Profile
+            </Link>
+          </>
         ) : null}
       </nav>
     </header>

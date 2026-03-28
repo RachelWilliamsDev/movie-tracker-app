@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
 import type { ActivityEventType, Prisma, ProfileVisibility } from "@prisma/client";
+import { buildActivityFeedSentence } from "@/lib/activity-feed-display";
 import { canViewUserActivityFromPolicy } from "@/lib/activity-visibility-policy";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -171,18 +172,30 @@ export async function GET(request: Request) {
     nextOffset = hasMore ? offset + page.length : null;
   }
 
+  const actorDisplayName = (row: FeedRow) =>
+    row.actor.name?.trim() || row.actor.email;
+
+  const items = await Promise.all(
+    page.map(async (row) => {
+      const username = actorDisplayName(row);
+      const sentence = await buildActivityFeedSentence(username, row.type, row.metadata);
+      return {
+        id: row.id,
+        type: row.type,
+        metadata: row.metadata,
+        createdAt: row.createdAt.toISOString(),
+        sentence,
+        actor: {
+          id: row.actor.id,
+          username
+        }
+      };
+    })
+  );
+
   return NextResponse.json({
     ok: true,
-    items: page.map((row) => ({
-      id: row.id,
-      type: row.type,
-      metadata: row.metadata,
-      createdAt: row.createdAt.toISOString(),
-      actor: {
-        id: row.actor.id,
-        username: row.actor.name?.trim() || row.actor.email
-      }
-    })),
+    items,
     pagination: {
       limit,
       hasMore,
