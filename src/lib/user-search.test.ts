@@ -17,24 +17,32 @@ test("clampUserSearchLimit caps at max", () => {
 });
 
 test("mapUserToSearchHit uses name as displayName when present", () => {
-  const hit = mapUserToSearchHit({
-    id: "u1",
-    email: "a@b.com",
-    name: "  Ada  "
-  });
+  const hit = mapUserToSearchHit(
+    {
+      id: "u1",
+      email: "a@b.com",
+      name: "  Ada  "
+    },
+    true
+  );
   assert.equal(hit.userId, "u1");
   assert.equal(hit.username, "a@b.com");
   assert.equal(hit.displayName, "Ada");
   assert.equal(hit.avatarUrl, null);
+  assert.equal(hit.isFollowing, true);
 });
 
 test("mapUserToSearchHit falls back displayName to email", () => {
-  const hit = mapUserToSearchHit({
-    id: "u2",
-    email: "solo@x.com",
-    name: null
-  });
+  const hit = mapUserToSearchHit(
+    {
+      id: "u2",
+      email: "solo@x.com",
+      name: null
+    },
+    false
+  );
   assert.equal(hit.displayName, "solo@x.com");
+  assert.equal(hit.isFollowing, false);
 });
 
 test("searchUsersForViewer returns empty for blank query", async () => {
@@ -43,8 +51,13 @@ test("searchUsersForViewer returns empty for blank query", async () => {
       findMany: async () => {
         throw new Error("should not query");
       }
+    },
+    userFollow: {
+      findMany: async () => {
+        throw new Error("should not query follows");
+      }
     }
-  } as unknown as Pick<PrismaClient, "user">;
+  } as unknown as Pick<PrismaClient, "user" | "userFollow">;
   const out = await searchUsersForViewer("me", "   ", 10, db);
   assert.deepEqual(out, []);
 });
@@ -59,13 +72,33 @@ test("searchUsersForViewer excludes viewer and maps rows", async () => {
           { id: "other", email: "o@z.com", name: "Pat" }
         ];
       }
+    },
+    userFollow: {
+      findMany: async () => []
     }
-  } as unknown as Pick<PrismaClient, "user">;
+  } as unknown as Pick<PrismaClient, "user" | "userFollow">;
 
   const out = await searchUsersForViewer("me", "pat", 15, db);
   assert.equal(out.length, 1);
   assert.equal(out[0]?.userId, "other");
   assert.equal(out[0]?.displayName, "Pat");
+  assert.equal(out[0]?.isFollowing, false);
   assert.ok(captured);
   assert.equal(captured!.take, 15);
+});
+
+test("searchUsersForViewer sets isFollowing from approved follows", async () => {
+  const db = {
+    user: {
+      findMany: async () => [
+        { id: "other", email: "o@z.com", name: "Pat" }
+      ]
+    },
+    userFollow: {
+      findMany: async () => [{ followingId: "other" }]
+    }
+  } as unknown as Pick<PrismaClient, "user" | "userFollow">;
+
+  const out = await searchUsersForViewer("me", "pat", 15, db);
+  assert.equal(out[0]?.isFollowing, true);
 });

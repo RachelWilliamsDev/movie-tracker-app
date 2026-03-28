@@ -16,17 +16,22 @@ export type PublicUserSearchHit = {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  /** Viewer has an APPROVED follow to this user. */
+  isFollowing: boolean;
 };
 
 /**
  * Maps DB user to API shape. There is no separate `username` column yet; `username`
  * is the account email (ticket: fallback when no username field).
  */
-export function mapUserToSearchHit(user: {
-  id: string;
-  email: string;
-  name: string | null;
-}): PublicUserSearchHit {
+export function mapUserToSearchHit(
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+  },
+  isFollowing: boolean
+): PublicUserSearchHit {
   const trimmedName = user.name?.trim();
   const displayName =
     trimmedName && trimmedName.length > 0 ? trimmedName : user.email;
@@ -34,7 +39,8 @@ export function mapUserToSearchHit(user: {
     userId: user.id,
     username: user.email,
     displayName,
-    avatarUrl: null
+    avatarUrl: null,
+    isFollowing
   };
 }
 
@@ -42,7 +48,7 @@ export async function searchUsersForViewer(
   viewerId: string,
   q: string,
   limit: number,
-  db: Pick<PrismaClient, "user">
+  db: Pick<PrismaClient, "user" | "userFollow">
 ): Promise<PublicUserSearchHit[]> {
   const trimmed = q.trim();
   if (!trimmed) {
@@ -62,5 +68,19 @@ export async function searchUsersForViewer(
     orderBy: [{ name: "asc" }, { email: "asc" }]
   });
 
-  return rows.map(mapUserToSearchHit);
+  const ids = rows.map((r) => r.id);
+  let followingIds = new Set<string>();
+  if (ids.length > 0) {
+    const follows = await db.userFollow.findMany({
+      where: {
+        followerId: viewerId,
+        followingId: { in: ids },
+        approvalStatus: "APPROVED"
+      },
+      select: { followingId: true }
+    });
+    followingIds = new Set(follows.map((f) => f.followingId));
+  }
+
+  return rows.map((r) => mapUserToSearchHit(r, followingIds.has(r.id)));
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { DiscoverUserRow } from "@/components/discover-user-row";
 import { Button } from "@/components/ui/button";
 import type { PublicUserSearchHit } from "@/lib/user-search";
 
@@ -10,7 +11,7 @@ const DEBOUNCE_MS = 350;
 const LIMIT = 20;
 
 export default function DiscoverPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const [inputValue, setInputValue] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [users, setUsers] = useState<PublicUserSearchHit[]>([]);
@@ -179,18 +180,14 @@ export default function DiscoverPage() {
         <p className="mt-6 text-sm text-gray-600">No users match that search.</p>
       ) : null}
 
-      {users.length > 0 ? (
-        <ul className="mt-6 space-y-2" role="list">
+      {users.length > 0 && session?.user?.id ? (
+        <ul className="mt-6 list-none space-y-2 p-0" role="list">
           {users.map((u) => (
-            <li key={u.userId}>
-              <Link
-                className="flex min-h-12 items-center rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm transition-colors hover:bg-gray-50"
-                href={`/profile?userId=${encodeURIComponent(u.userId)}`}
-              >
-                <span className="font-medium text-gray-900">{u.displayName}</span>
-                <span className="ml-2 truncate text-gray-500">{u.username}</span>
-              </Link>
-            </li>
+            <DiscoverUserRow
+              key={u.userId}
+              hit={u}
+              viewerId={session.user.id}
+            />
           ))}
         </ul>
       ) : null}
