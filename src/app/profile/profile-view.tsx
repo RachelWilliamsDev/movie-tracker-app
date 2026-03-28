@@ -201,6 +201,18 @@ export async function ProfileView({
         />
       </section>
 
+      {isOwnProfile ? (
+        <p className="text-sm text-gray-600">
+          <Link
+            className="font-medium text-gray-900 underline underline-offset-4 outline-none hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
+            href="/discover"
+          >
+            Find friends
+          </Link>{" "}
+          — search or browse suggested people to follow.
+        </p>
+      ) : null}
+
       {activityHidden ? (
         <section className="rounded-lg border border-gray-200 bg-white p-4">
           <h2 className="text-base font-medium text-gray-900">Activity</h2>
