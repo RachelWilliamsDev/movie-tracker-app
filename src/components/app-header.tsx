@@ -14,6 +14,8 @@ export function AppHeader() {
   const onHome = pathname === "/";
   const onProfile = pathname === "/profile";
   const onFeed = pathname === "/feed";
+  const onDiscover =
+    pathname === "/discover" || pathname.startsWith("/discover/");
 
   return (
     <header className="border-b border-gray-200 bg-white">
@@ -36,6 +38,13 @@ export function AppHeader() {
               href="/feed"
             >
               Feed
+            </Link>
+            <Link
+              aria-current={onDiscover ? "page" : undefined}
+              className={navLinkClass}
+              href="/discover"
+            >
+              Discover
             </Link>
             <Link
               aria-current={onProfile ? "page" : undefined}
