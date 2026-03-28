@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth/next";
+import { ProfileHeaderFollow } from "@/components/profile-header-follow";
 import { resolveUserActivityAccess } from "@/lib/activity-visibility";
 import { authOptions } from "@/lib/auth";
+import { countFollowers, countFollowing, getFollowState } from "@/lib/follow-service";
 import { prisma } from "@/lib/prisma";
 import { tmdbFetch } from "@/lib/tmdb";
 import { WATCH_SOURCE_LABEL } from "@/lib/watch-source";
@@ -50,6 +52,18 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   const access = await resolveUserActivityAccess(viewerId, targetUserId);
   const displayName = profileUser.name?.trim() || profileUser.email || "User";
   const isOwnProfile = viewerId === targetUserId;
+
+  const { followersCount, followingCount, initialIsFollowing } = isOwnProfile
+    ? {
+        followersCount: await countFollowers(targetUserId),
+        followingCount: await countFollowing(targetUserId),
+        initialIsFollowing: false
+      }
+    : await getFollowState(viewerId, targetUserId).then((s) => ({
+        followersCount: s.followersCount,
+        followingCount: s.followingCount,
+        initialIsFollowing: s.isFollowing
+      }));
 
   const [watched, ratings, tvProgressRows] = access.allowed
     ? await Promise.all([
@@ -182,10 +196,16 @@ export default async function ProfilePage({ searchParams }: PageProps) {
       </h1>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4">
-        <p className="text-sm text-gray-500">
-          {isOwnProfile ? "Signed in as" : "Member"}
-        </p>
-        <p className="mt-1 text-lg font-medium text-gray-900">{displayName}</p>
+        <ProfileHeaderFollow
+          key={targetUserId}
+          displayName={displayName}
+          initialFollowersCount={followersCount}
+          initialFollowingCount={followingCount}
+          initialIsFollowing={initialIsFollowing}
+          isOwnProfile={isOwnProfile}
+          memberLabel={isOwnProfile ? "Signed in as" : "Member"}
+          targetUserId={targetUserId}
+        />
       </section>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4">
