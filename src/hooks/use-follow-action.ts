@@ -22,6 +22,8 @@ export type UseFollowActionOptions = {
   initialFollowersCount: number;
   initialFollowingCount: number;
   initialIsFollowing: boolean;
+  /** When false, skip periodic `/api/follow/state` polling (e.g. compact list rows). Default true. */
+  enablePeriodicRefresh?: boolean;
 };
 
 const POLL_MS = 45_000;
@@ -32,7 +34,8 @@ export function useFollowAction({
   isOwnProfile,
   initialFollowersCount,
   initialFollowingCount,
-  initialIsFollowing
+  initialIsFollowing,
+  enablePeriodicRefresh = true
 }: UseFollowActionOptions) {
   const [followersCount, setFollowersCount] = useState(initialFollowersCount);
   const [followingCount, setFollowingCount] = useState(initialFollowingCount);
@@ -109,11 +112,14 @@ export function useFollowAction({
   }, [targetUserId, isOwnProfile]);
 
   useEffect(() => {
+    if (!enablePeriodicRefresh) {
+      return;
+    }
     const id = window.setInterval(() => {
       void refreshFromServer();
     }, POLL_MS);
     return () => window.clearInterval(id);
-  }, [refreshFromServer]);
+  }, [enablePeriodicRefresh, refreshFromServer]);
 
   const toggleFollow = useCallback(async () => {
     if (isOwnProfile) {

@@ -18,8 +18,8 @@ import {
  * Auth: requires session. 401 if unauthenticated.
  *
  * Success 200: `{ ok: true, users: UserSearchHit[], meta: { limit: number, count: number } }`
- * Each hit: `{ userId, username, displayName, avatarUrl }` — `username` is email until a dedicated
- * username column exists; `avatarUrl` is always null in MVP.
+ * Each hit: `{ userId, username, displayName, avatarUrl, isFollowing }` — `username` is email until a dedicated
+ * username column exists; `avatarUrl` is always null in MVP; `isFollowing` is true when the viewer has an APPROVED follow.
  *
  * Errors:
  * - 401 `{ error: "Unauthorized" }` — not signed in
