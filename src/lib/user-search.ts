@@ -3,12 +3,25 @@ import type { PrismaClient } from "@prisma/client";
 /** Hard cap per FEAT-116 (document in API). */
 export const USER_SEARCH_MAX_LIMIT = 20;
 
+/** Hard cap for GET /api/users/suggestions. */
+export const USER_SUGGESTIONS_MAX_LIMIT = 12;
+
+const DEFAULT_SUGGESTIONS_LIMIT = 8;
+
 export function clampUserSearchLimit(raw: string | null): number {
   const n = Number.parseInt(raw ?? "20", 10);
   if (!Number.isFinite(n) || n < 1) {
     return USER_SEARCH_MAX_LIMIT;
   }
   return Math.min(Math.floor(n), USER_SEARCH_MAX_LIMIT);
+}
+
+export function clampSuggestionsLimit(raw: string | null): number {
+  const n = Number.parseInt(raw ?? String(DEFAULT_SUGGESTIONS_LIMIT), 10);
+  if (!Number.isFinite(n) || n < 1) {
+    return DEFAULT_SUGGESTIONS_LIMIT;
+  }
+  return Math.min(Math.floor(n), USER_SUGGESTIONS_MAX_LIMIT);
 }
 
 export type PublicUserSearchHit = {
@@ -83,4 +96,30 @@ export async function searchUsersForViewer(
   }
 
   return rows.map((r) => mapUserToSearchHit(r, followingIds.has(r.id)));
+}
+
+/**
+ * Users the viewer does not yet follow (no follow row in either direction from viewer → user).
+ * Ordered deterministically for MVP. `isFollowing` is always false for returned rows.
+ */
+export async function suggestUsersForViewer(
+  viewerId: string,
+  limit: number,
+  db: Pick<PrismaClient, "user">
+): Promise<PublicUserSearchHit[]> {
+  const rows = await db.user.findMany({
+    where: {
+      id: { not: viewerId },
+      followers: {
+        none: {
+          followerId: viewerId
+        }
+      }
+    },
+    select: { id: true, email: true, name: true },
+    take: limit,
+    orderBy: [{ name: "asc" }, { email: "asc" }]
+  });
+
+  return rows.map((r) => mapUserToSearchHit(r, false));
 }
