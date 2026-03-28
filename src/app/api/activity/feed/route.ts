@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
-import type { ActivityEventType, Prisma, ProfileVisibility } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import type { ActivityEventType, ProfileVisibility } from "@prisma/client";
 import { buildActivityFeedSentence } from "@/lib/activity-feed-display";
 import { canViewUserActivityFromPolicy } from "@/lib/activity-visibility-policy";
 import { authOptions } from "@/lib/auth";
@@ -84,6 +85,7 @@ export async function GET(request: Request) {
   const cursorRaw = url.searchParams.get("cursor")?.trim() ?? "";
   const offsetRaw = url.searchParams.get("offset")?.trim() ?? "";
 
+  try {
   const follows = await prisma.userFollow.findMany({
     where: { followerId: viewerId, approvalStatus: "APPROVED" },
     select: { followingId: true }
@@ -203,4 +205,24 @@ export async function GET(request: Request) {
       nextOffset
     }
   });
+  } catch (e) {
+    console.error("[api/activity/feed]", e);
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2021"
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Activity feed storage is missing. Run `npm run prisma:push` so your database matches the Prisma schema, then try again."
+        },
+        { status: 503 }
+      );
+    }
+    return NextResponse.json(
+      { ok: false, error: "Could not load feed." },
+      { status: 500 }
+    );
+  }
 }
