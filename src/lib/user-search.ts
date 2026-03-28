@@ -99,7 +99,7 @@ export async function searchUsersForViewer(
 }
 
 /**
- * Users the viewer does not yet follow (no follow row in either direction from viewer → user).
+ * Users the viewer does not yet follow (no `UserFollow` row with this viewer as follower).
  * Ordered deterministically for MVP. `isFollowing` is always false for returned rows.
  */
 export async function suggestUsersForViewer(
