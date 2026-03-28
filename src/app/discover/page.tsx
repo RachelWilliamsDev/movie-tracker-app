@@ -52,13 +52,16 @@ export default function DiscoverPage() {
         const data = (await res.json()) as {
           ok?: boolean;
           error?: string;
+          code?: string;
           users?: PublicUserSearchHit[];
         };
-        if (res.status === 401) {
+        if (res.status === 401 || data.code === "UNAUTHORIZED") {
           throw new Error("UNAUTHORIZED");
         }
         if (!res.ok || !data.ok || !Array.isArray(data.users)) {
-          throw new Error(data.error ?? "Search failed.");
+          throw new Error(
+            data.error ?? "Could not load search results. Try again."
+          );
         }
         setUsers(data.users);
       })

@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
+import { jsonApiError } from "@/lib/api-errors";
 import { prisma } from "@/lib/prisma";
 import {
   clampUserSearchLimit,
@@ -22,14 +23,14 @@ import {
  * username column exists; `avatarUrl` is always null in MVP; `isFollowing` is true when the viewer has an APPROVED follow.
  *
  * Errors:
- * - 401 `{ error: "Unauthorized" }` — not signed in
- * - 500 `{ error: "Could not search users." }` — unexpected server failure
+ * - 401 `{ error: "Unauthorized", code: "UNAUTHORIZED" }` — not signed in
+ * - 500 `{ error: "Could not search users.", code: "SEARCH_FAILED" }` — unexpected server failure
  */
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   const viewerId = session?.user?.id;
   if (!viewerId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonApiError(401, "Unauthorized", "UNAUTHORIZED");
   }
 
   const url = new URL(request.url);
@@ -44,9 +45,10 @@ export async function GET(request: Request) {
       meta: { limit, count: users.length }
     });
   } catch {
-    return NextResponse.json(
-      { error: "Could not search users." },
-      { status: 500 }
+    return jsonApiError(
+      500,
+      "Could not search users.",
+      "SEARCH_FAILED"
     );
   }
 }

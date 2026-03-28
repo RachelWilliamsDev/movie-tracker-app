@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -20,7 +21,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     select: { name: true, email: true }
   });
   if (!user) {
-    return { title: "Profile | MovieApp" };
+    notFound();
   }
 
   const displayName = user.name?.trim() || user.email || "User";

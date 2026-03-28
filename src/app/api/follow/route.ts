@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
+import { jsonApiError } from "@/lib/api-errors";
 import { followUser, unfollowUser } from "@/lib/follow-service";
 
 type Body = {
@@ -30,17 +31,17 @@ function parseTargetId(body: Body): string {
 export async function POST(request: Request) {
   const followerId = await getActorId();
   if (!followerId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonApiError(401, "Unauthorized", "UNAUTHORIZED");
   }
 
   const body = await parseBody(request);
   if (!body) {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return jsonApiError(400, "Invalid JSON", "BAD_REQUEST");
   }
 
   const followingId = parseTargetId(body);
   if (!followingId) {
-    return NextResponse.json({ error: "userId is required" }, { status: 400 });
+    return jsonApiError(400, "userId is required", "BAD_REQUEST");
   }
 
   try {
@@ -48,29 +49,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ...state });
   } catch (error) {
     if (error instanceof Error && error.message === "Cannot follow yourself.") {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return jsonApiError(400, error.message, "BAD_REQUEST");
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      return NextResponse.json({ error: "User not found." }, { status: 400 });
+      return jsonApiError(404, "User not found.", "NOT_FOUND");
     }
-    return NextResponse.json({ error: "Could not follow user." }, { status: 500 });
+    return jsonApiError(500, "Could not follow user.", "FOLLOW_FAILED");
   }
 }
 
 export async function DELETE(request: Request) {
   const followerId = await getActorId();
   if (!followerId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonApiError(401, "Unauthorized", "UNAUTHORIZED");
   }
 
   const body = await parseBody(request);
   if (!body) {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return jsonApiError(400, "Invalid JSON", "BAD_REQUEST");
   }
 
   const followingId = parseTargetId(body);
   if (!followingId) {
-    return NextResponse.json({ error: "userId is required" }, { status: 400 });
+    return jsonApiError(400, "userId is required", "BAD_REQUEST");
   }
 
   try {
@@ -78,11 +79,11 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: true, ...state });
   } catch (error) {
     if (error instanceof Error && error.message === "Cannot follow yourself.") {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return jsonApiError(400, error.message, "BAD_REQUEST");
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      return NextResponse.json({ error: "User not found." }, { status: 400 });
+      return jsonApiError(404, "User not found.", "NOT_FOUND");
     }
-    return NextResponse.json({ error: "Could not unfollow user." }, { status: 500 });
+    return jsonApiError(500, "Could not unfollow user.", "UNFOLLOW_FAILED");
   }
 }
