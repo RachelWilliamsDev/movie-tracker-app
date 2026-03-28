@@ -1,16 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-
-type FollowStatePayload = {
-  ok?: boolean;
-  isFollowing?: boolean;
-  followersCount?: number;
-  followingCount?: number;
-  error?: string;
-};
+import { useFollowAction } from "@/hooks/use-follow-action";
 
 type Props = {
   targetUserId: string;
@@ -22,8 +14,6 @@ type Props = {
   memberLabel: string;
 };
 
-const POLL_MS = 45_000;
-
 export function ProfileHeaderFollow({
   targetUserId,
   isOwnProfile,
@@ -33,97 +23,21 @@ export function ProfileHeaderFollow({
   displayName,
   memberLabel
 }: Props) {
-  const [followersCount, setFollowersCount] = useState(initialFollowersCount);
-  const [followingCount, setFollowingCount] = useState(initialFollowingCount);
-  const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setFollowersCount(initialFollowersCount);
-    setFollowingCount(initialFollowingCount);
-    setIsFollowing(initialIsFollowing);
-    setError(null);
-  }, [
+  const {
+    followersCount,
+    followingCount,
+    isFollowing,
+    pending,
+    error,
+    successFeedback,
+    toggleFollow
+  } = useFollowAction({
     targetUserId,
+    isOwnProfile,
     initialFollowersCount,
     initialFollowingCount,
     initialIsFollowing
-  ]);
-
-  const refreshFromServer = useCallback(async () => {
-    const res = await fetch(
-      `/api/follow/state?userId=${encodeURIComponent(targetUserId)}`,
-      { cache: "no-store" }
-    );
-    const data = (await res.json()) as FollowStatePayload;
-    if (!res.ok || !data.ok) {
-      return;
-    }
-    if (typeof data.followersCount === "number") {
-      setFollowersCount(data.followersCount);
-    }
-    if (typeof data.followingCount === "number") {
-      setFollowingCount(data.followingCount);
-    }
-    if (!isOwnProfile && typeof data.isFollowing === "boolean") {
-      setIsFollowing(data.isFollowing);
-    }
-  }, [targetUserId, isOwnProfile]);
-
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      void refreshFromServer();
-    }, POLL_MS);
-    return () => window.clearInterval(id);
-  }, [refreshFromServer]);
-
-  async function toggleFollow() {
-    if (isOwnProfile || pending) {
-      return;
-    }
-    setError(null);
-    const snapshot = { followersCount, isFollowing };
-    const nextFollowing = !isFollowing;
-    setPending(true);
-    setIsFollowing(nextFollowing);
-    setFollowersCount((c) => Math.max(0, nextFollowing ? c + 1 : c - 1));
-
-    try {
-      const res = await fetch("/api/follow", {
-        method: nextFollowing ? "POST" : "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: targetUserId })
-      });
-      const data = (await res.json()) as FollowStatePayload & {
-        viewerId?: string;
-        targetUserId?: string;
-      };
-
-      if (!res.ok || !data.ok) {
-        setFollowersCount(snapshot.followersCount);
-        setIsFollowing(snapshot.isFollowing);
-        setError(data.error ?? "Could not update follow.");
-        return;
-      }
-
-      if (typeof data.followersCount === "number") {
-        setFollowersCount(data.followersCount);
-      }
-      if (typeof data.followingCount === "number") {
-        setFollowingCount(data.followingCount);
-      }
-      if (typeof data.isFollowing === "boolean") {
-        setIsFollowing(data.isFollowing);
-      }
-    } catch {
-      setFollowersCount(snapshot.followersCount);
-      setIsFollowing(snapshot.isFollowing);
-      setError("Network error. Try again.");
-    } finally {
-      setPending(false);
-    }
-  }
+  });
 
   return (
     <div>
@@ -158,14 +72,20 @@ export function ProfileHeaderFollow({
       {!isOwnProfile ? (
         <div className="mt-4">
           <Button
+            aria-busy={pending}
             disabled={pending}
             onClick={() => void toggleFollow()}
             type="button"
             variant={isFollowing ? "outline" : "default"}
           >
-            {pending ? "…" : isFollowing ? "Unfollow" : "Follow"}
+            {pending ? "Updating…" : isFollowing ? "Unfollow" : "Follow"}
           </Button>
         </div>
+      ) : null}
+      {successFeedback ? (
+        <p className="mt-2 text-sm text-green-700" role="status">
+          {successFeedback}
+        </p>
       ) : null}
       {error ? (
         <p className="mt-2 text-sm text-red-600" role="alert">
