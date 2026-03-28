@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import type { WatchSource, WatchStatus } from "@prisma/client";
+import { scheduleUserActivityEvent } from "@/lib/activity-events";
 import { resolveUserActivityAccess } from "@/lib/activity-visibility";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -143,6 +144,14 @@ export async function POST(request: Request) {
         watchSource
       }
     });
+
+    if (watchStatus === "COMPLETED") {
+      scheduleUserActivityEvent(userId, "WATCH_COMPLETED", {
+        contentId,
+        mediaType,
+        watchSource: watchSource ?? null
+      });
+    }
 
     return NextResponse.json({ ok: true, watchStatus, watchSource });
   } catch {
