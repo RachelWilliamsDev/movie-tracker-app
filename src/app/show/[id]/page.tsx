@@ -10,6 +10,10 @@ import { prisma } from "@/lib/prisma";
 import { tmdbFetch } from "@/lib/tmdb";
 import { RatingPanel } from "@/components/rating-panel";
 import { ShareToFeedModal } from "@/components/share-to-feed-modal";
+import {
+  WhereToWatchSection,
+  WhereToWatchSkeleton
+} from "@/components/where-to-watch-section";
 import { TvEpisodeSection } from "./tv-episode-section";
 
 const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
@@ -275,6 +279,10 @@ export default async function ShowDetailPage(props: PageProps) {
               {overview?.trim() ? overview : "No overview available."}
             </p>
           </section>
+
+          <Suspense fallback={<WhereToWatchSkeleton />}>
+            <WhereToWatchSection mediaType={mediaType} tmdbId={numericId} />
+          </Suspense>
 
           {mediaType === "movie" ? (
             <section className="mt-4">
