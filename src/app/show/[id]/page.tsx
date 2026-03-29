@@ -103,9 +103,9 @@ function parseTvSeasonQueryParam(raw: string | undefined): number | null {
   return n;
 }
 
-export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
-  const { id } = await params;
-  const sp = await searchParams;
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const { id } = await props.params;
+  const sp = await props.searchParams;
   const numericId = Number.parseInt(id, 10);
   const mediaType = isMediaType(sp.type) ? sp.type : "movie";
 
@@ -133,9 +133,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   }
 }
 
-export default async function ShowDetailPage({ params, searchParams }: PageProps) {
-  const { id } = await params;
-  const sp = await searchParams;
+export default async function ShowDetailPage(props: PageProps) {
+  const { id } = await props.params;
+  const sp = await props.searchParams;
   const numericId = Number.parseInt(id, 10);
 
   if (!Number.isFinite(numericId) || numericId <= 0) {

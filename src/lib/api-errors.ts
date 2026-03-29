@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { UsernameValidationCode } from "@/lib/username";
 
 /**
  * Consistent JSON errors for profile/discovery APIs (FEAT-120).
@@ -15,7 +16,8 @@ export type ApiErrorCode =
   | "FOLLOW_FAILED"
   | "UNFOLLOW_FAILED"
   | "FOLLOWERS_LIST_FAILED"
-  | "FOLLOWING_LIST_FAILED";
+  | "FOLLOWING_LIST_FAILED"
+  | UsernameValidationCode;
 
 export type ApiErrorBody = {
   error: string;

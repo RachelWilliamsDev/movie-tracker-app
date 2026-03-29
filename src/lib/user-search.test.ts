@@ -88,8 +88,8 @@ test("searchUsersForViewer excludes viewer and maps rows", async () => {
   assert.equal(out[0]?.userId, "other");
   assert.equal(out[0]?.displayName, "Pat");
   assert.equal(out[0]?.isFollowing, false);
-  assert.ok(captured);
-  assert.equal(captured!.take, 15);
+  assert.ok(captured !== null);
+  assert.equal((captured as { where: object; take: number }).take, 15);
 });
 
 test("searchUsersForViewer sets isFollowing from approved follows", async () => {
