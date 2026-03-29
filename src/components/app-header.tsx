@@ -31,29 +31,39 @@ export function AppHeader() {
           Home
         </Link>
         {status === "authenticated" && session?.user ? (
-          <>
+          !session.user.username ? (
             <Link
-              aria-current={onFeed ? "page" : undefined}
+              aria-current={pathname === "/choose-username" ? "page" : undefined}
               className={navLinkClass}
-              href="/feed"
+              href="/choose-username"
             >
-              Feed
+              Choose username
             </Link>
-            <Link
-              aria-current={onDiscover ? "page" : undefined}
-              className={navLinkClass}
-              href="/discover"
-            >
-              Discover
-            </Link>
-            <Link
-              aria-current={onProfile ? "page" : undefined}
-              className={navLinkClass}
-              href="/profile"
-            >
-              Profile
-            </Link>
-          </>
+          ) : (
+            <>
+              <Link
+                aria-current={onFeed ? "page" : undefined}
+                className={navLinkClass}
+                href="/feed"
+              >
+                Feed
+              </Link>
+              <Link
+                aria-current={onDiscover ? "page" : undefined}
+                className={navLinkClass}
+                href="/discover"
+              >
+                Discover
+              </Link>
+              <Link
+                aria-current={onProfile ? "page" : undefined}
+                className={navLinkClass}
+                href="/profile"
+              >
+                Profile
+              </Link>
+            </>
+          )
         ) : null}
       </nav>
     </header>
