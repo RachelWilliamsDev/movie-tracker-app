@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { jsonApiError } from "@/lib/api-errors";
 import { prisma } from "@/lib/prisma";
-import { userPublicHandle } from "@/lib/user-search";
+import { userPublicDisplayName } from "@/lib/user-search";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
 
 type FollowingItem = {
   userId: string;
-  username: string;
+  username: string | null;
+  displayName: string;
   avatarUrl: string | null;
   followedAt: string;
 };
@@ -66,7 +67,8 @@ export async function GET(request: Request) {
 
     const following: FollowingItem[] = page.map((row) => ({
       userId: row.following.id,
-      username: userPublicHandle(row.following),
+      username: row.following.username,
+      displayName: userPublicDisplayName(row.following),
       avatarUrl: null,
       followedAt: row.createdAt.toISOString()
     }));

@@ -15,6 +15,7 @@ const actorSelect = {
   id: true,
   name: true,
   email: true,
+  username: true,
   profileVisibility: true
 } as const;
 
@@ -172,13 +173,16 @@ export async function GET(request: Request) {
     nextOffset = hasMore ? offset + page.length : null;
   }
 
-  const actorDisplayName = (row: FeedRow) =>
-    row.actor.name?.trim() || row.actor.email;
+  /** FEAT-134: prefer name, then handle, then email (never show email when handle exists). */
+  const actorLabelForSentence = (row: FeedRow) =>
+    row.actor.name?.trim() ||
+    row.actor.username ||
+    row.actor.email;
 
   const items = await Promise.all(
     page.map(async (row) => {
-      const username = actorDisplayName(row);
-      const sentence = await buildActivityFeedSentence(username, row.type, row.metadata);
+      const label = actorLabelForSentence(row);
+      const sentence = await buildActivityFeedSentence(label, row.type, row.metadata);
       return {
         id: row.id,
         type: row.type,
@@ -187,7 +191,8 @@ export async function GET(request: Request) {
         sentence,
         actor: {
           id: row.actor.id,
-          username
+          username: row.actor.username,
+          displayName: label
         }
       };
     })
