@@ -10,7 +10,9 @@
     "test:unit": "tsx --test src/lib/**/*.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "db:test": "node scripts/test-db.mjs"
+    "db:test": "node scripts/test-db.mjs",
+    "fe136:check": "node scripts/fe136-usernames.mjs check",
+    "fe136:backfill": "node scripts/fe136-usernames.mjs backfill"
   },
   "keywords": [],
   "author": "",
