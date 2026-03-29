@@ -70,3 +70,16 @@ test("chronological tie-break: newer createdAt sorts before older for mixed type
   );
   assert.ok(newer.createdAt > older.createdAt);
 });
+
+/** MEM-94: feed JSON must never expose email (PII). */
+test("mapPostRowToFeedItem JSON has no email field anywhere", () => {
+  const item = mapPostRowToFeedItem(
+    row({
+      id: "post_pii",
+      type: "SHARE",
+      metadata: { nested: { note: "no email key below author" } }
+    })
+  );
+  const json = JSON.stringify(item);
+  assert.doesNotMatch(json, /"email"\s*:/);
+});

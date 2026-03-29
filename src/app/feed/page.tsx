@@ -254,7 +254,7 @@ export default function FeedPage() {
         </Link>
         <h1 className="mt-4 text-2xl font-semibold">Feed</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Sign in to see posts from people you follow.
+          Sign in to see your feed and posts from people you follow.
         </p>
       </main>
     );
@@ -272,7 +272,7 @@ export default function FeedPage() {
       </div>
       <h1 className="text-2xl font-semibold">Feed</h1>
       <p className="text-sm text-gray-600">
-        Activity and shares from people you follow.
+        Your posts and activity from people you follow.
       </p>
 
       {loadingInitial ? (
@@ -305,8 +305,8 @@ export default function FeedPage() {
             <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center">
               <p className="text-sm font-medium text-gray-800">Nothing here yet</p>
               <p className="mt-2 text-sm text-gray-600">
-                Follow friends to see their watches, ratings, and shares in one
-                place.
+                When you share or log activity, it shows up here. Follow friends
+                to see their posts too.
               </p>
             </div>
           ) : null}

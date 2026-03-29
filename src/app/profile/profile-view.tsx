@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ProfileActivityTabs } from "@/components/profile-activity-tabs";
 import { ProfileHeaderFollow } from "@/components/profile-header-follow";
 import "@/lib/profile-discovery-privacy";
 import { resolveUserActivityAccess } from "@/lib/activity-visibility";
@@ -251,99 +252,104 @@ export async function ProfileView({
           </p>
         </section>
       ) : (
-        <>
-          <section className="rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="text-base font-medium text-gray-900">Ratings</h2>
+        <ProfileActivityTabs
+          targetUserId={id}
+          overview={
+            <>
+              <section className="rounded-lg border border-gray-200 bg-white p-4">
+                <h2 className="text-base font-medium text-gray-900">Ratings</h2>
 
-            {resolvedRatings.length === 0 ? (
-              <p className="mt-2 text-sm text-gray-600">No ratings yet.</p>
-            ) : (
-              <ul className="mt-3 space-y-3">
-                {resolvedRatings.map((row, idx) => (
-                  <li key={`rating-${row.mediaType}-${row.contentId}-${idx}`}>
-                    <p className="text-sm font-medium text-gray-900">
-                      {row.title}{" "}
-                      <span className="text-gray-500">({row.mediaType})</span>
-                    </p>
-                    <p className="mt-1 text-sm text-gray-600">
-                      Rating: {row.rating}/5
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+                {resolvedRatings.length === 0 ? (
+                  <p className="mt-2 text-sm text-gray-600">No ratings yet.</p>
+                ) : (
+                  <ul className="mt-3 space-y-3">
+                    {resolvedRatings.map((row, idx) => (
+                      <li key={`rating-${row.mediaType}-${row.contentId}-${idx}`}>
+                        <p className="text-sm font-medium text-gray-900">
+                          {row.title}{" "}
+                          <span className="text-gray-500">({row.mediaType})</span>
+                        </p>
+                        <p className="mt-1 text-sm text-gray-600">
+                          Rating: {row.rating}/5
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="text-base font-medium text-gray-900">TV progress</h2>
+              <section className="rounded-lg border border-gray-200 bg-white p-4">
+                <h2 className="text-base font-medium text-gray-900">TV progress</h2>
 
-            {resolvedTvProgress.length === 0 ? (
-              <p className="mt-2 text-sm text-gray-600">No TV progress yet.</p>
-            ) : (
-              <ul className="mt-3 space-y-4">
-                {resolvedTvProgress.map((show) => (
-                  <li key={`tv-progress-${show.contentId}`}>
-                    <p className="text-sm font-medium text-gray-900">
-                      {show.title}
-                    </p>
-                    <ul className="mt-1 space-y-1">
-                      {([1, 2] as const).map((seasonNum) => {
-                        const ep = show.seasons.get(seasonNum);
-                        if (ep == null) {
-                          return null;
-                        }
-                        return (
-                          <li
-                            key={`${show.contentId}-s${seasonNum}`}
-                            className="text-sm text-gray-600"
-                          >
-                            Season {seasonNum}: Episode {ep}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+                {resolvedTvProgress.length === 0 ? (
+                  <p className="mt-2 text-sm text-gray-600">No TV progress yet.</p>
+                ) : (
+                  <ul className="mt-3 space-y-4">
+                    {resolvedTvProgress.map((show) => (
+                      <li key={`tv-progress-${show.contentId}`}>
+                        <p className="text-sm font-medium text-gray-900">
+                          {show.title}
+                        </p>
+                        <ul className="mt-1 space-y-1">
+                          {([1, 2] as const).map((seasonNum) => {
+                            const ep = show.seasons.get(seasonNum);
+                            if (ep == null) {
+                              return null;
+                            }
+                            return (
+                              <li
+                                key={`${show.contentId}-s${seasonNum}`}
+                                className="text-sm text-gray-600"
+                              >
+                                Season {seasonNum}: Episode {ep}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-4">
-            <h2 className="text-base font-medium text-gray-900">Watch list</h2>
+              <section className="rounded-lg border border-gray-200 bg-white p-4">
+                <h2 className="text-base font-medium text-gray-900">Watch list</h2>
 
-            {resolvedWatched.length === 0 ? (
-              <p className="mt-2 text-sm text-gray-600">
-                No titles in this list yet.
-              </p>
-            ) : (
-              <ul className="mt-3 space-y-3">
-                {resolvedWatched.map((watch, idx) => {
-                  const statusLabel = WATCH_STATUS_LABEL[watch.watchStatus];
-                  const sourceSuffix =
-                    watch.watchStatus === "COMPLETED" &&
-                    watch.watchSource != null
-                      ? ` · ${WATCH_SOURCE_LABEL[watch.watchSource]}`
-                      : "";
+                {resolvedWatched.length === 0 ? (
+                  <p className="mt-2 text-sm text-gray-600">
+                    No titles in this list yet.
+                  </p>
+                ) : (
+                  <ul className="mt-3 space-y-3">
+                    {resolvedWatched.map((watch, idx) => {
+                      const statusLabel = WATCH_STATUS_LABEL[watch.watchStatus];
+                      const sourceSuffix =
+                        watch.watchStatus === "COMPLETED" &&
+                        watch.watchSource != null
+                          ? ` · ${WATCH_SOURCE_LABEL[watch.watchSource]}`
+                          : "";
 
-                  return (
-                    <li key={`${watch.mediaType}-${watch.contentId}-${idx}`}>
-                      <p className="text-sm font-medium text-gray-900">
-                        {watch.title}{" "}
-                        <span className="text-gray-500">
-                          ({watch.mediaType})
-                        </span>
-                      </p>
-                      <p className="mt-1 text-sm text-gray-600">
-                        Status: {statusLabel}
-                        {sourceSuffix}
-                      </p>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-        </>
+                      return (
+                        <li key={`${watch.mediaType}-${watch.contentId}-${idx}`}>
+                          <p className="text-sm font-medium text-gray-900">
+                            {watch.title}{" "}
+                            <span className="text-gray-500">
+                              ({watch.mediaType})
+                            </span>
+                          </p>
+                          <p className="mt-1 text-sm text-gray-600">
+                            Status: {statusLabel}
+                            {sourceSuffix}
+                          </p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+            </>
+          }
+        />
       )}
     </main>
   );

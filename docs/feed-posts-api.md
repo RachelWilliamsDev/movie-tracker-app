@@ -5,7 +5,7 @@
 `GET /api/feed/posts`
 
 - **Auth:** Signed-in session (NextAuth cookie). **401** `{ "error": "Unauthorized" }` if missing.
-- **Scope:** `Post` rows whose `userId` is in the viewer’s **approved** follow list (`UserFollow.approvalStatus = APPROVED`), same idea as `GET /api/activity/feed`.
+- **Scope:** `Post` rows whose `userId` is in the viewer’s **approved** follow list (`UserFollow.approvalStatus = APPROVED`) **or** is the viewer themselves (so your own shares/activity appear on `/feed`).
 - **Privacy:** Posts from authors with `PRIVATE` profiles are only included when policy allows (aligned with `canViewUserActivityFromPolicy` — in practice, approved follows satisfy this for followed authors).
 
 ## Query parameters
@@ -77,3 +77,37 @@ Prisma schema includes `@@index([userId, createdAt(sort: Desc)])` on `Post` for 
 3. Call `GET /api/feed/posts` as the viewer: response `items` should list both types ordered by `createdAt` descending.
 
 Unit coverage: `src/lib/unified-feed-post-mapper.test.ts` (mapping + paths); ordering is enforced by the Prisma `orderBy` in `src/app/api/feed/posts/route.ts`.
+
+## Profile: one user’s posts
+
+`GET /api/users/[userId]/posts`
+
+- **Auth:** Optional. Same **visibility** rules as profile activity (`resolveUserActivityAccess`): public profiles readable when signed out; private profiles require an approved follow (or owner).
+- **403** if the viewer may not see that member’s activity.
+- **404** if the user id is unknown.
+- **Query / response shape:** Same as `GET /api/feed/posts` (`limit`, `cursor`, `offset`, `items`, `pagination`).
+
+Used by the profile page **Recent activity** tab (`/user/[username]`, `/profile/[userId]`, and your own `/profile`).
+
+## MEM-94 — Integration (PII, payload size, QA)
+
+### PII
+
+- **Author** is built only from `id`, `name`, `username`, and internal `profileVisibility` (filtered out before JSON). **`email` is never selected** from `User` for this endpoint; responses must not contain an `"email"` JSON key.
+
+### Payload size (slow networks)
+
+- Default **`limit` 20**, max **50** per request. The feed page uses **`limit=20`** and batches like summaries (see `LIKE_SUMMARY_MAX_IDS` on the client). Prefer **cursor** pagination over large offsets.
+- For very slow links, clients may call with a smaller `limit` (e.g. `10`).
+
+### Automated smoke
+
+- Playwright: `e2e/feed-posts-integration.spec.ts` — signed-in session, `GET /api/feed/posts`, asserts **200**, **`ok`**, and response body has **no `"email"`** key; bounds response size for `limit=10`.
+- Run: `npm run test:e2e` (after `prisma db seed` and `.env` like other e2e tests).
+
+### Manual QA path (quick)
+
+1. Sign in as user **A**. Sign in as user **B** in another browser (or incognito); **B follows A** (approved).
+2. As **A**, create a share or activity that produces a **feed post** (or use seed/backfill data).
+3. As **B**, open **`/feed`** — confirm **A**’s post appears; open **`/show/...`** from the card; **like** / **comment** if UI is available.
+4. DevTools → Network → select **`/api/feed/posts`** → confirm response JSON has **no `email`** fields.
