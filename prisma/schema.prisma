@@ -36,6 +36,17 @@ enum ActivityEventType {
   RATED
 }
 
+/// Unified feed row: activity-derived posts today; share posts later (MEM-85).
+enum PostType {
+  ACTIVITY
+  SHARE
+}
+
+enum PostMediaKind {
+  MOVIE
+  TV
+}
+
 /// Approval-ready follow state scaffold (workflow handled in later tickets).
 enum FollowApprovalStatus {
   APPROVED
@@ -59,6 +70,7 @@ model User {
   tvEpisodeProgress UserTvEpisodeProgress[]
   ratings           UserRating[]
   activityEvents    UserActivityEvent[]
+  posts             Post[]
 }
 
 /// Append-only activity log for a future social feed; metadata holds TMDB keys + display hints.
@@ -69,8 +81,26 @@ model UserActivityEvent {
   type      ActivityEventType
   metadata  Json
   createdAt DateTime          @default(now())
+  post      Post?
 
   @@index([actorId, createdAt(sort: Desc)])
+}
+
+/// Social feed persistence. Activity rows are backfilled from `UserActivityEvent` via `sourceActivityEventId`.
+model Post {
+  id                    String         @id @default(cuid())
+  userId                String
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                  PostType
+  content               String?
+  mediaKind             PostMediaKind
+  tmdbId                Int
+  metadata              Json
+  createdAt             DateTime
+  sourceActivityEventId String?        @unique
+  sourceActivityEvent   UserActivityEvent? @relation(fields: [sourceActivityEventId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 /// TMDB-backed watch record; one row per user + title (movie or TV).

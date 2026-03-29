@@ -14,7 +14,8 @@
     "prisma:push": "prisma db push",
     "db:test": "node scripts/test-db.mjs",
     "fe136:check": "node scripts/fe136-usernames.mjs check",
-    "fe136:backfill": "node scripts/fe136-usernames.mjs backfill"
+    "fe136:backfill": "node scripts/fe136-usernames.mjs backfill",
+    "posts:backfill-activity": "tsx scripts/posts-backfill-activity.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
