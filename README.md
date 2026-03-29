@@ -82,6 +82,26 @@ A small **Next.js** app for searching TMDB titles, tracking what you watch, per-
 | `npm run prisma:generate` | Generate Prisma Client |
 | `npm run prisma:push` | Push schema to the database (`prisma db push`) |
 | `npm run db:test` | Quick DB connectivity check |
+| `npm run db:seed` | Upsert fixed E2E users (`prisma/seed.ts`) — run after `prisma:push` |
+| `npm run test:e2e` | Playwright E2E (`npx playwright test` — same runner; see below) |
+
+## E2E tests (Playwright)
+
+One smoke test (MEM-78) checks that Discover search rows link to `/user/[username]` for users with a handle.
+
+**Prerequisites:** PostgreSQL running, `.env` with `DATABASE_URL` and `NEXTAUTH_SECRET` (same as local dev).
+
+```bash
+npm run prisma:push
+npm run db:seed
+npx playwright install chromium   # first time only
+npm run test:e2e
+# or: npx playwright test
+```
+
+The seed creates `e2e.discover.viewer@example.test` (username `e2e_viewer`) and a searchable target `mem78_target`. Override credentials with `E2E_DISCOVER_VIEWER_EMAIL` / `E2E_DISCOVER_VIEWER_PASSWORD` in `.env` if needed.
+
+CI wiring for E2E is optional; run the commands above locally before merging discover/auth changes.
 
 ## Docker (local dev)
 
