@@ -31,8 +31,10 @@ export function ChooseUsernameForm({ nextPath }: { nextPath: string }) {
   const formatError =
     showValidation && !parsed.ok ? parsed.error.message : null;
   const displayError = serverError ?? formatError;
+  const needsUsernameHint = trimmed.length === 0;
   const describedBy = [
     "choose-username-hint",
+    needsUsernameHint ? "choose-username-required-hint" : null,
     displayError ? "choose-username-err" : null
   ]
     .filter(Boolean)
@@ -126,6 +128,14 @@ export function ChooseUsernameForm({ nextPath }: { nextPath: string }) {
       <Button disabled={loading || !clientOk} type="submit">
         {loading ? "Saving…" : "Continue"}
       </Button>
+      {needsUsernameHint ? (
+        <p
+          className="text-sm text-gray-600"
+          id="choose-username-required-hint"
+        >
+          Enter a username to continue.
+        </p>
+      ) : null}
     </form>
   );
 }
