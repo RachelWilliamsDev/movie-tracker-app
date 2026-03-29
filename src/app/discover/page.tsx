@@ -197,7 +197,7 @@ export default function DiscoverPage() {
         <DiscoverMutedPanel className="mt-6">
           <span className="font-medium text-gray-800">No results</span>
           <span className="mt-2 block">
-            No one matches that search. Try a different name or email.
+            No one matches that search. Try a different name, username, or email.
           </span>
         </DiscoverMutedPanel>
       ) : null}

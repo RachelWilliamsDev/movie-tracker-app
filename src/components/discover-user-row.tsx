@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useFollowAction } from "@/hooks/use-follow-action";
-import type { PublicUserSearchHit } from "@/lib/user-search";
+import {
+  type PublicUserSearchHit,
+  profilePathForUser
+} from "@/lib/user-search";
 
 function rowInitials(displayName: string): string {
   const parts = displayName.trim().split(/\s+/).filter(Boolean);
@@ -48,7 +51,7 @@ export function DiscoverUserRow({
   viewerId: string;
 }) {
   const isSelf = hit.userId === viewerId;
-  const profileHref = `/profile/${encodeURIComponent(hit.userId)}`;
+  const profileHref = profilePathForUser(hit.userId, hit.username);
 
   const {
     isFollowing,
@@ -75,7 +78,11 @@ export function DiscoverUserRow({
           <RowAvatar hit={hit} />
           <div className="min-w-0 flex-1">
             <div className="font-medium text-gray-900">{hit.displayName}</div>
-            <div className="truncate text-sm text-gray-500">{hit.username}</div>
+            {hit.username &&
+            hit.displayName.trim().toLowerCase() !==
+              hit.username.toLowerCase() ? (
+              <div className="truncate text-sm text-gray-500">@{hit.username}</div>
+            ) : null}
           </div>
         </Link>
         {!isSelf ? (

@@ -29,9 +29,14 @@ export function clampSuggestionsLimit(raw: string | null): number {
   return Math.min(Math.floor(n), USER_SUGGESTIONS_MAX_LIMIT);
 }
 
+/**
+ * Discover / search row (FEAT-134). `username` is the stored handle only (`null` if unset — never
+ * email). `displayName` is name → username → email. UIs show `@username` as a second line only
+ * when it differs from `displayName`.
+ */
 export type PublicUserSearchHit = {
   userId: string;
-  username: string;
+  username: string | null;
   displayName: string;
   avatarUrl: string | null;
   /** Viewer has an APPROVED follow to this user. */
@@ -49,8 +54,36 @@ export function userPublicHandle(user: {
 }
 
 /**
- * Maps DB user to API shape. `username` in the response is the canonical handle:
- * stored `User.username` when set (already normalized), otherwise email fallback until onboarding.
+ * FEAT-134: List/search primary label — prefer real name, then public handle, then email.
+ */
+export function userPublicDisplayName(user: {
+  email: string;
+  name?: string | null;
+  username?: string | null;
+}): string {
+  const trimmedName = user.name?.trim();
+  if (trimmedName && trimmedName.length > 0) {
+    return trimmedName;
+  }
+  if (user.username != null && user.username.length > 0) {
+    return user.username;
+  }
+  return user.email;
+}
+
+/** FEAT-132/134: canonical public profile URL when a handle exists. */
+export function profilePathForUser(
+  userId: string,
+  username: string | null | undefined
+): string {
+  if (username != null && username.length > 0) {
+    return `/user/${encodeURIComponent(username)}`;
+  }
+  return `/profile/${encodeURIComponent(userId)}`;
+}
+
+/**
+ * Maps DB user to API shape for Discover / search (FEAT-134).
  */
 export function mapUserToSearchHit(
   user: {
@@ -61,13 +94,12 @@ export function mapUserToSearchHit(
   },
   isFollowing: boolean
 ): PublicUserSearchHit {
-  const trimmedName = user.name?.trim();
-  const displayName =
-    trimmedName && trimmedName.length > 0 ? trimmedName : user.email;
+  const handle =
+    user.username != null && user.username.length > 0 ? user.username : null;
   return {
     userId: user.id,
-    username: userPublicHandle(user),
-    displayName,
+    username: handle,
+    displayName: userPublicDisplayName(user),
     avatarUrl: null,
     isFollowing
   };

@@ -9,6 +9,7 @@ import {
   clampSuggestionsLimit,
   clampUserSearchLimit,
   mapUserToSearchHit,
+  profilePathForUser,
   searchUsersForViewer,
   suggestUsersForViewer
 } from "@/lib/user-search";
@@ -31,7 +32,7 @@ test("mapUserToSearchHit uses name as displayName when present", () => {
     true
   );
   assert.equal(hit.userId, "u1");
-  assert.equal(hit.username, "a@b.com");
+  assert.equal(hit.username, null);
   assert.equal(hit.displayName, "Ada");
   assert.equal(hit.avatarUrl, null);
   assert.equal(hit.isFollowing, true);
@@ -51,7 +52,7 @@ test("mapUserToSearchHit uses stored username as handle when set", () => {
   assert.equal(hit.displayName, "Pat");
 });
 
-test("mapUserToSearchHit falls back displayName to email", () => {
+test("mapUserToSearchHit falls back displayName to email when no handle", () => {
   const hit = mapUserToSearchHit(
     {
       id: "u2",
@@ -60,8 +61,34 @@ test("mapUserToSearchHit falls back displayName to email", () => {
     },
     false
   );
+  assert.equal(hit.username, null);
   assert.equal(hit.displayName, "solo@x.com");
   assert.equal(hit.isFollowing, false);
+});
+
+test("mapUserToSearchHit uses username for displayName when name missing", () => {
+  const hit = mapUserToSearchHit(
+    {
+      id: "u4",
+      email: "hide@x.com",
+      name: null,
+      username: "public_handle"
+    },
+    false
+  );
+  assert.equal(hit.username, "public_handle");
+  assert.equal(hit.displayName, "public_handle");
+});
+
+test("profilePathForUser prefers /user/[username] when handle set", () => {
+  assert.equal(
+    profilePathForUser("cuid1", "ada"),
+    "/user/ada"
+  );
+  assert.equal(
+    profilePathForUser("cuid1", null),
+    "/profile/cuid1"
+  );
 });
 
 test("searchUsersForViewer returns empty for blank query", async () => {

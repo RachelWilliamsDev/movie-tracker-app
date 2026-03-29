@@ -11,6 +11,8 @@ type Props = {
   initialFollowingCount: number;
   initialIsFollowing: boolean;
   displayName: string;
+  /** FEAT-134: show @handle + link to `/user/[username]` when set. */
+  publicUsername?: string | null;
   memberLabel: string;
   /** When false (e.g. logged-out viewer), hide follow button and prompt to sign in. */
   showFollowAction?: boolean;
@@ -25,6 +27,7 @@ export function ProfileHeaderFollow({
   initialFollowingCount,
   initialIsFollowing,
   displayName,
+  publicUsername = null,
   memberLabel,
   showFollowAction = true,
   enablePeriodicRefresh = true
@@ -50,6 +53,17 @@ export function ProfileHeaderFollow({
     <div>
       <p className="text-sm text-gray-500">{memberLabel}</p>
       <p className="mt-1 text-lg font-medium text-gray-900">{displayName}</p>
+      {publicUsername &&
+      displayName.trim().toLowerCase() !== publicUsername.toLowerCase() ? (
+        <p className="mt-0.5 text-sm text-gray-500">
+          <Link
+            className="font-medium text-gray-700 underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
+            href={`/user/${encodeURIComponent(publicUsername)}`}
+          >
+            @{publicUsername}
+          </Link>
+        </p>
+      ) : null}
       <div
         className="mt-3 flex flex-wrap gap-2"
         role="group"
