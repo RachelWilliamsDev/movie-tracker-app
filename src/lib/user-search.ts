@@ -42,16 +42,6 @@ export type PublicUserSearchHit = {
   isFollowing: boolean;
 };
 
-/** Public handle for APIs: normalized `username` when set, else email (FEAT-127; non-discovery only). */
-export function userPublicHandle(user: {
-  email: string;
-  username?: string | null;
-}): string {
-  return user.username != null && user.username.length > 0
-    ? user.username
-    : user.email;
-}
-
 /**
  * FEAT-136: Display label for social surfaces (lists, profile header, activity) — never email.
  */
