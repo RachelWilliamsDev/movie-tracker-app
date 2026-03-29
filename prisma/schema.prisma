@@ -45,6 +45,8 @@ enum FollowApprovalStatus {
 model User {
   id                String                  @id @default(cuid())
   email             String                  @unique
+  /// Canonical social handle; normalized lowercase in app on write. Null until user picks one (FEAT-127).
+  username          String?                 @unique
   name              String?
   password          String
   profileVisibility ProfileVisibility       @default(PUBLIC)
