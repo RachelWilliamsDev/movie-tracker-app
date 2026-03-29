@@ -3,6 +3,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { parseUsername } from "@/lib/username";
 
 type ProfileUser = {
   id: string;
@@ -93,7 +94,19 @@ export function ProfileSettingsForm() {
 
     const trimmedUser = username.trim();
     if (trimmedUser.length > 0) {
-      body.username = trimmedUser;
+      const parsed = parseUsername(trimmedUser);
+      if (!parsed.ok) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          username: parsed.error.message
+        }));
+        setSaving(false);
+        return;
+      }
+      const initial = initialUsername ?? "";
+      if (parsed.username !== initial) {
+        body.username = trimmedUser;
+      }
     } else if (initialUsername != null && initialUsername.length > 0) {
       body.username = null;
     }
@@ -205,6 +218,15 @@ export function ProfileSettingsForm() {
               {fieldErrors.username}
             </p>
           ) : null}
+          <p className="text-xs text-gray-500">
+            Public URL:{" "}
+            <code className="rounded bg-gray-100 px-1 py-0.5 text-gray-800">
+              /user/
+              {username.trim() || "yourname"}
+            </code>
+            . Changing username invalidates old links (404; no redirect in MVP). No per-month
+            change limit in MVP.
+          </p>
         </div>
 
         <div className="flex flex-col gap-1">

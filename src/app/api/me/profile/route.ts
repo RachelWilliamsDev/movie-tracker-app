@@ -84,6 +84,11 @@ export async function GET() {
  * - 400 + FEAT-128 codes — invalid username (`USERNAME_*` from `parseUsername`).
  * - 403 `FORBIDDEN` — client sent `email` in the body.
  * - 409 `USERNAME_TAKEN` — duplicate username (unique constraint).
+ *
+ * **FEAT-133 (MEM-71):** If the normalized username equals the value already stored for this
+ * user, the username field is not written (no unnecessary unique checks / writes). Clearing
+ * username when already null is also a no-op. **MVP:** no per-month change cap. After a
+ * successful change, old `/user/previous-name` URLs 404 (no redirect).
  */
 async function handleProfileUpdate(request: Request): Promise<Response> {
   const session = await getServerSession(authOptions);
@@ -117,14 +122,28 @@ async function handleProfileUpdate(request: Request): Promise<Response> {
 
   if (Object.hasOwn(record, "username")) {
     const raw = record.username;
+    const existingRow = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true }
+    });
+    if (!existingRow) {
+      return jsonApiError(404, "User not found.", "NOT_FOUND");
+    }
+    const currentUsername = existingRow.username;
+
     if (raw === null) {
-      data.username = null;
+      if (currentUsername !== null) {
+        data.username = null;
+      }
     } else if (typeof raw === "string") {
       const parsed = parseUsername(raw);
       if (!parsed.ok) {
         return jsonApiError(400, parsed.error.message, parsed.error.code);
       }
-      data.username = normalizeUsernameForDb(parsed.username);
+      const nextUsername = normalizeUsernameForDb(parsed.username);
+      if (nextUsername !== currentUsername) {
+        data.username = nextUsername;
+      }
     } else {
       return jsonApiError(
         400,
