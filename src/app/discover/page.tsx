@@ -29,8 +29,8 @@ export default function DiscoverPage() {
   useEffect(() => {
     const trimmed = inputValue.trim();
     if (trimmed.length === 0) {
-      setDebouncedQuery("");
-      return;
+      const clearId = window.setTimeout(() => setDebouncedQuery(""), 0);
+      return () => window.clearTimeout(clearId);
     }
     const id = window.setTimeout(() => {
       setDebouncedQuery(trimmed);
@@ -40,57 +40,64 @@ export default function DiscoverPage() {
 
   useEffect(() => {
     if (debouncedQuery.length === 0) {
-      setUsers([]);
-      setError(null);
-      setLoading(false);
-      return;
+      const resetId = window.setTimeout(() => {
+        setUsers([]);
+        setError(null);
+        setLoading(false);
+      }, 0);
+      return () => window.clearTimeout(resetId);
     }
 
     const ac = new AbortController();
-    setLoading(true);
-    setError(null);
+    const startId = window.setTimeout(() => {
+      setLoading(true);
+      setError(null);
 
-    const url = new URL("/api/users/search", window.location.origin);
-    url.searchParams.set("q", debouncedQuery);
-    url.searchParams.set("limit", String(LIMIT));
+      const url = new URL("/api/users/search", window.location.origin);
+      url.searchParams.set("q", debouncedQuery);
+      url.searchParams.set("limit", String(LIMIT));
 
-    fetch(url.toString(), { cache: "no-store", signal: ac.signal })
-      .then(async (res) => {
-        const data = (await res.json()) as {
-          ok?: boolean;
-          error?: string;
-          code?: string;
-          users?: PublicUserSearchHit[];
-        };
-        if (res.status === 401 || data.code === "UNAUTHORIZED") {
-          throw new Error("UNAUTHORIZED");
-        }
-        if (!res.ok || !data.ok || !Array.isArray(data.users)) {
-          throw new Error(
-            data.error ?? "Could not load search results. Try again."
-          );
-        }
-        setUsers(data.users);
-      })
-      .catch((e: unknown) => {
-        if (e instanceof Error && e.name === "AbortError") {
-          return;
-        }
-        if (e instanceof Error && e.message === "UNAUTHORIZED") {
-          setError("UNAUTHORIZED");
+      fetch(url.toString(), { cache: "no-store", signal: ac.signal })
+        .then(async (res) => {
+          const data = (await res.json()) as {
+            ok?: boolean;
+            error?: string;
+            code?: string;
+            users?: PublicUserSearchHit[];
+          };
+          if (res.status === 401 || data.code === "UNAUTHORIZED") {
+            throw new Error("UNAUTHORIZED");
+          }
+          if (!res.ok || !data.ok || !Array.isArray(data.users)) {
+            throw new Error(
+              data.error ?? "Could not load search results. Try again."
+            );
+          }
+          setUsers(data.users);
+        })
+        .catch((e: unknown) => {
+          if (e instanceof Error && e.name === "AbortError") {
+            return;
+          }
+          if (e instanceof Error && e.message === "UNAUTHORIZED") {
+            setError("UNAUTHORIZED");
+            setUsers([]);
+            return;
+          }
           setUsers([]);
-          return;
-        }
-        setUsers([]);
-        setError(e instanceof Error ? e.message : "Something went wrong.");
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) {
-          setLoading(false);
-        }
-      });
+          setError(e instanceof Error ? e.message : "Something went wrong.");
+        })
+        .finally(() => {
+          if (!ac.signal.aborted) {
+            setLoading(false);
+          }
+        });
+    }, 0);
 
-    return () => ac.abort();
+    return () => {
+      window.clearTimeout(startId);
+      ac.abort();
+    };
   }, [debouncedQuery, retryNonce]);
 
   if (status === "loading") {
