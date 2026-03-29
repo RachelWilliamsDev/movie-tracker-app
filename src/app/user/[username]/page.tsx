@@ -13,7 +13,7 @@ import { parseUsername } from "@/lib/username";
  * - Lookup uses the normalized (lowercase) value stored on `User.username`.
  * - **Users without a username** cannot be reached here (no row matches); treat as 404.
  *   With FEAT-129, active members should have a username before using social surfaces; legacy
- *   or incomplete accounts still resolve only via `/profile/[userId]` until FEAT-134.
+ *   or incomplete accounts still resolve via `/profile/[userId]` (FEAT-134 links prefer `/user/…`).
  * - `ProfileView` reuses the same privacy / follow behavior as `/profile/[userId]`.
  */
 

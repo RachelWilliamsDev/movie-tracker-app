@@ -5,6 +5,7 @@ import "@/lib/profile-discovery-privacy";
 import { resolveUserActivityAccess } from "@/lib/activity-visibility";
 import { countFollowers, countFollowing, getFollowState } from "@/lib/follow-service";
 import { prisma } from "@/lib/prisma";
+import { userPublicDisplayName } from "@/lib/user-search";
 import { resolveProfileViewerContext } from "@/lib/profile-viewer-context";
 import { tmdbFetch } from "@/lib/tmdb";
 import { WATCH_SOURCE_LABEL } from "@/lib/watch-source";
@@ -32,14 +33,18 @@ export async function ProfileView({
 
   const profileUser = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true }
+    select: { id: true, name: true, email: true, username: true }
   });
   if (!profileUser) {
     notFound();
   }
 
   const access = await resolveUserActivityAccess(viewerId, id);
-  const displayName = profileUser.name?.trim() || profileUser.email || "User";
+  const displayName = userPublicDisplayName(profileUser);
+  const publicUsername =
+    profileUser.username != null && profileUser.username.length > 0
+      ? profileUser.username
+      : null;
 
   const { followersCount, followingCount, initialIsFollowing } = isOwnProfile
     ? {
@@ -205,6 +210,7 @@ export async function ProfileView({
           key={id}
           displayName={displayName}
           enablePeriodicRefresh={viewerSignedIn}
+          publicUsername={publicUsername}
           initialFollowersCount={followersCount}
           initialFollowingCount={followingCount}
           initialIsFollowing={initialIsFollowing}

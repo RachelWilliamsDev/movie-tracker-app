@@ -3,18 +3,20 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { profilePathForUser } from "@/lib/user-search";
 
 export type SocialGraphItem = {
   userId: string;
-  username: string;
+  username: string | null;
+  displayName: string;
   avatarUrl: string | null;
   followedAt: string;
 };
 
 type Pagination = { limit: number; hasMore: boolean; nextCursor: string | null };
 
-function initials(username: string): string {
-  const parts = username.trim().split(/\s+/).filter(Boolean);
+function initials(label: string): string {
+  const parts = label.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
     const a = parts[0]?.[0];
     const b = parts[1]?.[0];
@@ -43,7 +45,7 @@ function ListAvatar({ item }: { item: SocialGraphItem }) {
       aria-hidden
       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600"
     >
-      {initials(item.username)}
+      {initials(item.displayName)}
     </div>
   );
 }
@@ -161,11 +163,22 @@ export function SocialGraphList({ mode, targetUserId }: Props) {
             {items.map((item) => (
               <li key={`${mode}-${item.userId}`}>
                 <Link
-                  className="flex min-h-[56px] items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 transition-colors hover:bg-gray-50"
-                  href={`/profile/${encodeURIComponent(item.userId)}`}
+                  className="flex min-h-[56px] min-w-0 items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 transition-colors hover:bg-gray-50"
+                  href={profilePathForUser(item.userId, item.username)}
                 >
                   <ListAvatar item={item} />
-                  <span className="font-medium text-gray-900">{item.username}</span>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="font-medium text-gray-900">
+                      {item.displayName}
+                    </span>
+                    {item.username &&
+                    item.displayName.trim().toLowerCase() !==
+                      item.username.toLowerCase() ? (
+                      <span className="truncate text-sm text-gray-500">
+                        @{item.username}
+                      </span>
+                    ) : null}
+                  </span>
                 </Link>
               </li>
             ))}
