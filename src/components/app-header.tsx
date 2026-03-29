@@ -16,6 +16,9 @@ export function AppHeader() {
   const onFeed = pathname === "/feed";
   const onDiscover =
     pathname === "/discover" || pathname.startsWith("/discover/");
+  const onSettings =
+    pathname === "/settings/profile" ||
+    pathname.startsWith("/settings/");
 
   return (
     <header className="border-b border-gray-200 bg-white">
@@ -31,39 +34,50 @@ export function AppHeader() {
           Home
         </Link>
         {status === "authenticated" && session?.user ? (
-          !session.user.username ? (
+          <>
+            {!session.user.username ? (
+              <Link
+                aria-current={
+                  pathname === "/choose-username" ? "page" : undefined
+                }
+                className={navLinkClass}
+                href="/choose-username"
+              >
+                Choose username
+              </Link>
+            ) : (
+              <>
+                <Link
+                  aria-current={onFeed ? "page" : undefined}
+                  className={navLinkClass}
+                  href="/feed"
+                >
+                  Feed
+                </Link>
+                <Link
+                  aria-current={onDiscover ? "page" : undefined}
+                  className={navLinkClass}
+                  href="/discover"
+                >
+                  Discover
+                </Link>
+                <Link
+                  aria-current={onProfile ? "page" : undefined}
+                  className={navLinkClass}
+                  href="/profile"
+                >
+                  Profile
+                </Link>
+              </>
+            )}
             <Link
-              aria-current={pathname === "/choose-username" ? "page" : undefined}
+              aria-current={onSettings ? "page" : undefined}
               className={navLinkClass}
-              href="/choose-username"
+              href="/settings/profile"
             >
-              Choose username
+              Settings
             </Link>
-          ) : (
-            <>
-              <Link
-                aria-current={onFeed ? "page" : undefined}
-                className={navLinkClass}
-                href="/feed"
-              >
-                Feed
-              </Link>
-              <Link
-                aria-current={onDiscover ? "page" : undefined}
-                className={navLinkClass}
-                href="/discover"
-              >
-                Discover
-              </Link>
-              <Link
-                aria-current={onProfile ? "page" : undefined}
-                className={navLinkClass}
-                href="/profile"
-              >
-                Profile
-              </Link>
-            </>
-          )
+          </>
         ) : null}
       </nav>
     </header>

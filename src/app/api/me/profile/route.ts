@@ -25,6 +25,47 @@ type MeProfileResponse = {
 };
 
 /**
+ * GET `/api/me/profile` (FEAT-131)
+ *
+ * Auth: session required → 401. Success 200 same body shape as PATCH success.
+ */
+export async function GET() {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+  if (!userId) {
+    return jsonApiError(401, "Unauthorized", "UNAUTHORIZED");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      name: true,
+      profileVisibility: true
+    }
+  });
+
+  if (!user) {
+    return jsonApiError(404, "User not found.", "NOT_FOUND");
+  }
+
+  const payload: MeProfileResponse = {
+    ok: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      displayName: user.name,
+      profileVisibility: user.profileVisibility
+    }
+  };
+
+  return NextResponse.json(payload);
+}
+
+/**
  * PATCH | PUT `/api/me/profile` (FEAT-130)
  *
  * Auth: session required → 401 `UNAUTHORIZED`.
