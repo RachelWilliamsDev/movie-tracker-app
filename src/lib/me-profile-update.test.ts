@@ -21,11 +21,11 @@ test("handleMeProfileUpdate: unchanged username returns 200 and skips user.updat
 
   const prisma = {
     user: {
-      async findUnique(args: { where: { id: string }; select: { username: true } }) {
+      async findUnique(args: { where: { id?: string } }) {
         assert.equal(args.where.id, userId);
         return { username: "jane_doe" as string | null };
       },
-      async findUniqueOrThrow(args: { where: { id: string } }) {
+      async findUniqueOrThrow(args: { where: { id?: string } }) {
         assert.equal(args.where.id, userId);
         return { ...row };
       },
@@ -34,7 +34,7 @@ test("handleMeProfileUpdate: unchanged username returns 200 and skips user.updat
         throw new Error("user.update must not run when username is unchanged");
       }
     }
-  } satisfies MeProfileUpdatePrisma;
+  } as unknown as MeProfileUpdatePrisma;
 
   const request = new Request("http://localhost/api/me/profile", {
     method: "PATCH",
