@@ -2,13 +2,14 @@ import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
 import type { Prisma, ProfileVisibility } from "@prisma/client";
 import { canViewUserActivityFromPolicy } from "@/lib/activity-visibility-policy";
+import { resolveUserActivityAccess } from "@/lib/activity-visibility";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import {
   decodeFeedCursor,
   encodeFeedCursor,
   parseFeedLimit
 } from "@/lib/feed-post-cursor";
+import { prisma } from "@/lib/prisma";
 import {
   authorSelect,
   mapPostRowToFeedItem,
@@ -16,44 +17,15 @@ import {
 } from "@/lib/unified-feed-post-mapper";
 
 /**
- * GET /api/feed/posts — MEM-86 unified feed (chronological `Post` rows for followed users
- * plus the signed-in viewer’s own posts).
+ * GET /api/users/[userId]/posts — chronological `Post` rows for one user (profile “Recent activity”).
  *
- * Query:
- * - `limit` (optional, default 20, max 50)
- * - `cursor` (optional): opaque token from `pagination.nextCursor` — keyset on (`createdAt`, `id`) desc
- * - `offset` (optional): non-negative integer; only when `cursor` is omitted (same pattern as `/api/activity/feed`)
+ * Auth: optional. **403** if the viewer may not see this member’s activity (private / not following).
+ * **404** if `userId` is not a valid user id shape or user missing (align with profile pages).
  *
- * Auth: session required. 401 if absent.
- *
- * Success 200:
- * ```json
- * {
- *   "ok": true,
- *   "items": [
- *     {
- *       "id": "<post cuid>",
- *       "type": "ACTIVITY" | "SHARE",
- *       "content": string | null,
- *       "metadata": {},
- *       "createdAt": "<ISO8601>",
- *       "author": { "id", "username", "displayName" },
- *       "media": { "kind": "MOVIE" | "TV", "tmdbId": number, "detailPath": "/show/..." }
- *     }
- *   ],
- *   "pagination": { "limit", "hasMore", "nextCursor", "nextOffset" }
- * }
- * ```
- *
- * Ordering: newest first across `ACTIVITY` and `SHARE`. Privacy: same rules as activity feed
- * (`canViewUserActivityFromPolicy` on the post author).
- *
- * Full contract + mixed-type verification: `docs/feed-posts-api.md`.
- *
- * Includes the viewer’s own posts alongside posts from users they follow (approved).
+ * Query: same as `/api/feed/posts` (`limit`, `cursor`, `offset`).
  */
-function postVisibleInFeed(
-  viewerId: string,
+function postVisibleForViewer(
+  viewerId: string | null,
   authorId: string,
   profileVisibility: ProfileVisibility
 ): boolean {
@@ -65,11 +37,24 @@ function postVisibleInFeed(
   });
 }
 
-export async function GET(request: Request) {
+type RouteContext = { params: Promise<{ userId: string }> };
+
+export async function GET(request: Request, context: RouteContext) {
+  const { userId: rawId } = await context.params;
+  const targetUserId = rawId?.trim() ?? "";
+  if (!targetUserId) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const session = await getServerSession(authOptions);
-  const viewerId = session?.user?.id;
-  if (!viewerId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const viewerId = session?.user?.id ?? null;
+
+  const access = await resolveUserActivityAccess(viewerId, targetUserId);
+  if (!access.targetExists) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (!access.allowed) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const url = new URL(request.url);
@@ -77,15 +62,8 @@ export async function GET(request: Request) {
   const cursorRaw = url.searchParams.get("cursor")?.trim() ?? "";
   const offsetRaw = url.searchParams.get("offset")?.trim() ?? "";
 
-  const follows = await prisma.userFollow.findMany({
-    where: { followerId: viewerId, approvalStatus: "APPROVED" },
-    select: { followingId: true }
-  });
-  const followingIds = [...new Set(follows.map((f) => f.followingId))];
-  const authorIds = [...new Set([...followingIds, viewerId])];
-
   const baseWhere: Prisma.PostWhereInput = {
-    userId: { in: authorIds }
+    userId: targetUserId
   };
 
   let where: Prisma.PostWhereInput = baseWhere;
@@ -116,7 +94,10 @@ export async function GET(request: Request) {
   } else if (offsetRaw.length > 0) {
     const offset = Number(offsetRaw);
     if (!Number.isInteger(offset) || offset < 0) {
-      return NextResponse.json({ error: "offset must be a non-negative integer" }, { status: 400 });
+      return NextResponse.json(
+        { error: "offset must be a non-negative integer" },
+        { status: 400 }
+      );
     }
     skip = offset;
   }
@@ -134,7 +115,7 @@ export async function GET(request: Request) {
   });
 
   const visible = rows.filter((row) =>
-    postVisibleInFeed(viewerId, row.userId, row.user.profileVisibility)
+    postVisibleForViewer(viewerId, row.userId, row.user.profileVisibility)
   );
 
   const hasMore = visible.length > limit;

@@ -1,12 +1,19 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import bcrypt from "bcryptjs";
 
 /**
  * Local / CI E2E users (MEM-78). Idempotent upserts by email.
  * Run after `npm run prisma:push` or migrate: `npx prisma db seed`
  */
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not set.");
+}
+const pool = new Pool({ connectionString });
+const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 const E2E_DISCOVER_PASSWORD = "E2eDiscover_Smoke1!";
 
@@ -58,4 +65,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });
