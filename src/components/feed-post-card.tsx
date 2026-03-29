@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import type { PostMediaKind, PostType, WatchStatus } from "@prisma/client";
 import { FeedPostSocial } from "@/components/feed-post-social";
-import type { PostMediaKind, PostType } from "@prisma/client";
+import { FeedPostWatchlistCta } from "@/components/feed-post-watchlist-cta";
 import type { UnifiedFeedPostItem } from "@/lib/unified-feed-post-mapper";
 import { profilePathForUser } from "@/lib/user-search";
 import { WATCH_SOURCE_LABEL } from "@/lib/watch-source";
@@ -143,11 +144,15 @@ type CardState =
   | { status: "ok"; title: string; posterPath: string | null }
   | { status: "error" };
 
+type FeedMediaType = "movie" | "tv";
+
 export function FeedPostCard({
   item,
   likeCount,
   viewerHasLiked,
-  onLikeSynced
+  onLikeSynced,
+  viewerWatchStatus,
+  onWatchUpdated
 }: {
   item: UnifiedFeedPostItem;
   likeCount: number;
@@ -156,6 +161,12 @@ export function FeedPostCard({
     postId: string,
     liked: boolean,
     likeCount: number
+  ) => void;
+  viewerWatchStatus: WatchStatus | null;
+  onWatchUpdated?: (
+    contentId: number,
+    mediaType: FeedMediaType,
+    status: WatchStatus
   ) => void;
 }) {
   const { relative, absolute } = formatFeedTimestamp(item.createdAt);
@@ -216,6 +227,9 @@ export function FeedPostCard({
     media.status === "ok"
       ? `View details for ${media.title} (${item.media.kind === "MOVIE" ? "movie" : "TV show"})`
       : `View ${item.media.kind === "MOVIE" ? "movie" : "TV show"} details`;
+
+  const mediaType: FeedMediaType =
+    item.media.kind === "MOVIE" ? "movie" : "tv";
 
   return (
     <article className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -308,6 +322,12 @@ export function FeedPostCard({
             onLikeSynced={onLikeSynced}
             postId={item.id}
             viewerHasLiked={viewerHasLiked}
+          />
+          <FeedPostWatchlistCta
+            contentId={item.media.tmdbId}
+            initialWatchStatus={viewerWatchStatus}
+            mediaType={mediaType}
+            onWatchUpdated={onWatchUpdated}
           />
         </div>
       </div>
