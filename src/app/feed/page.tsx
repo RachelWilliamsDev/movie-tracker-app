@@ -9,6 +9,8 @@ import type { UnifiedFeedPostItem } from "@/lib/unified-feed-post-mapper";
 
 const LIMIT = 20;
 const POLL_MS = 30_000;
+/** Matches `POST_LIKE_SUMMARY_MAX_IDS` in post-like-service (MEM-87). */
+const LIKE_SUMMARY_MAX_IDS = 50;
 
 type Pagination = {
   limit: number;
@@ -16,6 +18,32 @@ type Pagination = {
   nextCursor: string | null;
   nextOffset: number | null;
 };
+
+type PostEngagement = { likeCount: number; viewerHasLiked: boolean };
+
+async function fetchLikeSummaryChunks(
+  postIds: string[]
+): Promise<Record<string, PostEngagement>> {
+  const unique = [...new Set(postIds)].filter(Boolean);
+  const merged: Record<string, PostEngagement> = {};
+  for (let i = 0; i < unique.length; i += LIKE_SUMMARY_MAX_IDS) {
+    const chunk = unique.slice(i, i + LIKE_SUMMARY_MAX_IDS);
+    const res = await fetch("/api/posts/likes/summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ postIds: chunk })
+    });
+    const data = (await res.json()) as {
+      ok?: boolean;
+      posts?: Record<string, PostEngagement>;
+    };
+    if (res.ok && data.ok && data.posts) {
+      Object.assign(merged, data.posts);
+    }
+  }
+  return merged;
+}
 
 function FeedCardSkeleton() {
   return (
@@ -44,12 +72,29 @@ function FeedCardSkeleton() {
 export default function FeedPage() {
   const { status } = useSession();
   const [items, setItems] = useState<UnifiedFeedPostItem[]>([]);
+  const [engagement, setEngagement] = useState<Record<string, PostEngagement>>(
+    {}
+  );
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const hydrateLikes = useCallback(async (postIds: string[]) => {
+    if (postIds.length === 0) {
+      return;
+    }
+    try {
+      const posts = await fetchLikeSummaryChunks(postIds);
+      if (Object.keys(posts).length > 0) {
+        setEngagement((prev) => ({ ...prev, ...posts }));
+      }
+    } catch {
+      /* ignore — counts stay at default until retry/navigation */
+    }
+  }, []);
 
   const fetchFeed = useCallback(async (cursor: string | null) => {
     const url = new URL("/api/feed/posts", window.location.origin);
@@ -86,6 +131,7 @@ export default function FeedPage() {
         setItems(data.items!);
         setNextCursor(data.pagination!.nextCursor);
         setHasMore(data.pagination!.hasMore);
+        void hydrateLikes(data.items!.map((p) => p.id));
       } catch (e) {
         if (e instanceof Error && e.message === "UNAUTHORIZED") {
           setError("UNAUTHORIZED");
@@ -97,7 +143,7 @@ export default function FeedPage() {
         setRefreshing(false);
       }
     },
-    [fetchFeed]
+    [fetchFeed, hydrateLikes]
   );
 
   useEffect(() => {
@@ -129,6 +175,7 @@ export default function FeedPage() {
       setItems((prev) => [...prev, ...data.items!]);
       setNextCursor(data.pagination!.nextCursor);
       setHasMore(data.pagination!.hasMore);
+      void hydrateLikes(data.items!.map((p) => p.id));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
@@ -211,11 +258,27 @@ export default function FeedPage() {
           {items.length > 0 ? (
             <>
               <ul className="space-y-4">
-                {items.map((item) => (
-                  <li key={item.id}>
-                    <FeedPostCard item={item} />
-                  </li>
-                ))}
+                {items.map((item) => {
+                  const e = engagement[item.id];
+                  return (
+                    <li key={item.id}>
+                      <FeedPostCard
+                        item={item}
+                        likeCount={e?.likeCount ?? 0}
+                        viewerHasLiked={e?.viewerHasLiked ?? false}
+                        onLikeSynced={(postId, liked, count) => {
+                          setEngagement((prev) => ({
+                            ...prev,
+                            [postId]: {
+                              likeCount: count,
+                              viewerHasLiked: liked
+                            }
+                          }));
+                        }}
+                      />
+                    </li>
+                  );
+                })}
               </ul>
               {hasMore ? (
                 <Button
