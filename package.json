@@ -10,6 +10,8 @@
     "test:unit": "tsx --test src/lib/**/*.test.ts",
     "test:e2e": "playwright test",
     "db:seed": "prisma db seed",
+    "db:seed:fake": "tsx scripts/seed-fake-users.ts",
+    "qa:fake-users:activity": "tsx scripts/qa-fake-users-activity.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "db:test": "node scripts/test-db.mjs",
