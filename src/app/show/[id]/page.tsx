@@ -9,6 +9,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { tmdbFetch } from "@/lib/tmdb";
 import { RatingPanel } from "@/components/rating-panel";
+import { ShareToFeedModal } from "@/components/share-to-feed-modal";
 import { TvEpisodeSection } from "./tv-episode-section";
 
 const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
@@ -350,6 +351,14 @@ export default async function ShowDetailPage(props: PageProps) {
             initialWatchStatus={existingWatch?.watchStatus ?? null}
             isLoggedIn={!!userId}
             mediaType={mediaType}
+          />
+
+          <ShareToFeedModal
+            hasExistingRating={userRating != null}
+            isLoggedIn={!!userId}
+            mediaType={mediaType}
+            title={title}
+            tmdbId={numericId}
           />
 
           {mediaType === "tv" ? (
