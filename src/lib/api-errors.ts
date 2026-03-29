@@ -10,6 +10,7 @@ export type ApiErrorCode =
   | "NOT_FOUND"
   | "BAD_REQUEST"
   | "FORBIDDEN"
+  | "USERNAME_TAKEN"
   | "SEARCH_FAILED"
   | "SUGGESTIONS_FAILED"
   | "FOLLOW_STATE_FAILED"
