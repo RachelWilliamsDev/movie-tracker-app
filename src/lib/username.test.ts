@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   USERNAME_MAX_LENGTH,
   USERNAME_MIN_LENGTH,
+  normalizeUsernameForDb,
   parseUsername
 } from "@/lib/username";
 
@@ -68,4 +69,12 @@ test("parseUsername rejects inner invalid chars after trim", () => {
   const r = parseUsername("  x@y  ");
   assert.equal(r.ok, false);
   if (!r.ok) assert.equal(r.error.code, "USERNAME_INVALID_CHARS");
+});
+
+test("normalizeUsernameForDb trims lowercases and maps empty to null", () => {
+  assert.equal(normalizeUsernameForDb("  Ada "), "ada");
+  assert.equal(normalizeUsernameForDb(""), null);
+  assert.equal(normalizeUsernameForDb("   "), null);
+  assert.equal(normalizeUsernameForDb(null), null);
+  assert.equal(normalizeUsernameForDb(undefined), null);
 });

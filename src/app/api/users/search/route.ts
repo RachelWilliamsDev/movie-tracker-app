@@ -12,15 +12,15 @@ import {
  * GET /api/users/search
  *
  * Query params:
- * - `q` (string, optional): Substring to match against display name (`User.name`) and
- *   account email (case-insensitive). Empty or omitted `q` returns an empty `users` array.
+ * - `q` (string, optional): Substring to match against display name (`User.name`),
+ *   account email, and optional `User.username` (case-insensitive). Empty or omitted `q` returns an empty `users` array.
  * - `limit` (number, optional): Max results, default 20, hard cap 20, minimum treated as default if invalid.
  *
  * Auth: requires session. 401 if unauthenticated.
  *
  * Success 200: `{ ok: true, users: UserSearchHit[], meta: { limit: number, count: number } }`
- * Each hit: `{ userId, username, displayName, avatarUrl, isFollowing }` — `username` is email until a dedicated
- * username column exists; `avatarUrl` is always null in MVP; `isFollowing` is true when the viewer has an APPROVED follow.
+ * Each hit: `{ userId, username, displayName, avatarUrl, isFollowing }` — `username` is the stored handle when set,
+ * otherwise email until the user completes username onboarding; `avatarUrl` is always null in MVP; `isFollowing` is true when the viewer has an APPROVED follow.
  *
  * Errors:
  * - 401 `{ error: "Unauthorized", code: "UNAUTHORIZED" }` — not signed in

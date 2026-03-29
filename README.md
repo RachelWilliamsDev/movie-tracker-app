@@ -55,6 +55,8 @@ A small **Next.js** app for searching TMDB titles, tracking what you watch, per-
    npm run prisma:push
    ```
 
+   **Usernames (FEAT-127):** `User.username` is optional and unique when set (nullable in the database). Existing accounts keep working with `username` null until onboarding assigns one; writes should use `normalizeUsernameForDb` / `parseUsername` so values stay lowercase. The repo includes `prisma/migrations/20260329120000_add_user_username` for `prisma migrate deploy`. If you previously synced the schema with only `db push` and have a non-empty database, run `npx prisma migrate resolve --applied 20260329120000_add_user_username` once after applying the same SQL (or use `db push` and then resolve) so migration history matches.
+
 4. **Run locally**
 
    ```bash

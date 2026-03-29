@@ -91,3 +91,17 @@ export function parseUsername(raw: unknown): ParseUsernameResult {
 export function isValidUsername(raw: unknown): boolean {
   return parseUsername(raw).ok;
 }
+
+/**
+ * Value stored on `User.username`: trim + lowercase, or `null` if empty/unset (FEAT-127).
+ * Use after `parseUsername` succeeds, or when persisting a normalized handle.
+ */
+export function normalizeUsernameForDb(
+  raw: string | null | undefined
+): string | null {
+  if (raw == null) {
+    return null;
+  }
+  const t = String(raw).trim().toLowerCase();
+  return t.length === 0 ? null : t;
+}

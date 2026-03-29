@@ -37,6 +37,20 @@ test("mapUserToSearchHit uses name as displayName when present", () => {
   assert.equal(hit.isFollowing, true);
 });
 
+test("mapUserToSearchHit uses stored username as handle when set", () => {
+  const hit = mapUserToSearchHit(
+    {
+      id: "u3",
+      email: "a@b.com",
+      name: "Pat",
+      username: "pat_handle"
+    },
+    false
+  );
+  assert.equal(hit.username, "pat_handle");
+  assert.equal(hit.displayName, "Pat");
+});
+
 test("mapUserToSearchHit falls back displayName to email", () => {
   const hit = mapUserToSearchHit(
     {
@@ -119,7 +133,9 @@ test("clampSuggestionsLimit defaults and FEAT-122 5–10 band", () => {
 
 test("suggestUsersForViewer maps $queryRaw rows", async () => {
   const db = {
-    $queryRaw: async () => [{ id: "u2", email: "b@b.com", name: "Bo" }]
+    $queryRaw: async () => [
+      { id: "u2", email: "b@b.com", name: "Bo", username: null }
+    ]
   } as unknown as SuggestUsersDb;
 
   const out = await suggestUsersForViewer("me", 6, db);

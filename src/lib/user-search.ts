@@ -38,15 +38,26 @@ export type PublicUserSearchHit = {
   isFollowing: boolean;
 };
 
+/** Public handle for APIs: normalized `username` when set, else email (FEAT-127). */
+export function userPublicHandle(user: {
+  email: string;
+  username?: string | null;
+}): string {
+  return user.username != null && user.username.length > 0
+    ? user.username
+    : user.email;
+}
+
 /**
- * Maps DB user to API shape. There is no separate `username` column yet; `username`
- * is the account email (ticket: fallback when no username field).
+ * Maps DB user to API shape. `username` in the response is the canonical handle:
+ * stored `User.username` when set (already normalized), otherwise email fallback until onboarding.
  */
 export function mapUserToSearchHit(
   user: {
     id: string;
     email: string;
     name: string | null;
+    username?: string | null;
   },
   isFollowing: boolean
 ): PublicUserSearchHit {
@@ -55,7 +66,7 @@ export function mapUserToSearchHit(
     trimmedName && trimmedName.length > 0 ? trimmedName : user.email;
   return {
     userId: user.id,
-    username: user.email,
+    username: userPublicHandle(user),
     displayName,
     avatarUrl: null,
     isFollowing
@@ -78,12 +89,13 @@ export async function searchUsersForViewer(
       id: { not: viewerId },
       OR: [
         { name: { contains: trimmed, mode: "insensitive" } },
-        { email: { contains: trimmed, mode: "insensitive" } }
+        { email: { contains: trimmed, mode: "insensitive" } },
+        { username: { contains: trimmed, mode: "insensitive" } }
       ]
     },
-    select: { id: true, email: true, name: true },
+    select: { id: true, email: true, name: true, username: true },
     take: limit,
-    orderBy: [{ name: "asc" }, { email: "asc" }]
+    orderBy: [{ name: "asc" }, { email: "asc" }, { username: "asc" }]
   });
 
   const ids = rows.map((r) => r.id);
@@ -119,9 +131,9 @@ export async function suggestUsersForViewer(
   db: SuggestUsersDb
 ): Promise<PublicUserSearchHit[]> {
   const rows = await db.$queryRaw<
-    Array<{ id: string; email: string; name: string | null }>
+    Array<{ id: string; email: string; name: string | null; username: string | null }>
   >`
-    SELECT u.id, u.email, u.name
+    SELECT u.id, u.email, u.name, u.username
     FROM "User" u
     WHERE u.id != ${viewerId}
       AND u."profileVisibility" = 'PUBLIC'
