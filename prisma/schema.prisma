@@ -72,6 +72,7 @@ model User {
   activityEvents    UserActivityEvent[]
   posts             Post[]
   postComments      PostComment[]
+  postLikes         PostLike[]
 }
 
 /// Append-only activity log for a future social feed; metadata holds TMDB keys + display hints.
@@ -101,8 +102,22 @@ model Post {
   sourceActivityEventId String?        @unique
   sourceActivityEvent   UserActivityEvent? @relation(fields: [sourceActivityEventId], references: [id], onDelete: SetNull)
   comments              PostComment[]
+  likes                 PostLike[]
 
   @@index([userId, createdAt(sort: Desc)])
+}
+
+/// One like per user per post (MEM-87). Counts derived from rows (no separate counter).
+model PostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([postId])
 }
 
 /// Flat comments on a feed post (MEM-88); plain text only, max length enforced in API.

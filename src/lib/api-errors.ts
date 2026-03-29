@@ -20,6 +20,8 @@ export type ApiErrorCode =
   | "FOLLOWING_LIST_FAILED"
   | "COMMENTS_LIST_FAILED"
   | "COMMENT_CREATE_FAILED"
+  | "LIKE_TOGGLE_FAILED"
+  | "LIKES_SUMMARY_FAILED"
   | UsernameValidationCode;
 
 export type ApiErrorBody = {
