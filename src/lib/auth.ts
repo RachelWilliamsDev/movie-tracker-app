@@ -35,15 +35,30 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id,
           email: user.email,
-          name: user.name
+          name: user.name,
+          username: user.username ?? null
         };
       }
     })
   ],
   callbacks: {
+    async jwt({ token, user, trigger, session }) {
+      if (user) {
+        token.username = user.username ?? null;
+      }
+      if (trigger === "update" && session && typeof session === "object") {
+        const s = session as { username?: string | null };
+        if (s.username !== undefined) {
+          token.username = s.username;
+        }
+      }
+      return token;
+    },
     async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;
+        session.user.username =
+          (token.username as string | null | undefined) ?? null;
       }
       return session;
     }

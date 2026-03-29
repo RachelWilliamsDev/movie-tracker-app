@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { getSession, signIn, signOut, useSession } from "next-auth/react";
 
 const profileLinkClass =
   "inline-flex rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 outline-none hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2";
@@ -13,6 +13,7 @@ const primaryButtonFocus =
 
 export function AuthPanel() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -46,9 +47,10 @@ export function AuthPanel() {
 
     if (result?.error) {
       setMessage("Account created, but login failed.");
-    } else {
-      setMessage("Signed up and logged in.");
+      setLoading(false);
+      return;
     }
+    router.push("/choose-username");
     setLoading(false);
   };
 
@@ -65,6 +67,12 @@ export function AuthPanel() {
 
     if (result?.error) {
       setMessage("Invalid email or password.");
+      setLoading(false);
+      return;
+    }
+    const s = await getSession();
+    if (s?.user && !s.user.username) {
+      router.push("/choose-username");
     } else {
       setMessage("Logged in successfully.");
     }
@@ -76,18 +84,32 @@ export function AuthPanel() {
   }
 
   if (session?.user) {
+    const needsUsername =
+      !session.user.username || session.user.username.length === 0;
     return (
       <div className="w-full max-w-md rounded-lg border border-gray-200 p-6">
         <p className="text-sm text-gray-600">Logged in as</p>
         <p className="font-medium">{session.user.email}</p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <Link
-            aria-current={pathname === "/profile" ? "page" : undefined}
-            className={profileLinkClass}
-            href="/profile"
-          >
-            Profile
-          </Link>
+          {needsUsername ? (
+            <Link
+              aria-current={
+                pathname === "/choose-username" ? "page" : undefined
+              }
+              className={profileLinkClass}
+              href="/choose-username"
+            >
+              Choose username
+            </Link>
+          ) : (
+            <Link
+              aria-current={pathname === "/profile" ? "page" : undefined}
+              className={profileLinkClass}
+              href="/profile"
+            >
+              Profile
+            </Link>
+          )}
           <button
             className={`rounded bg-black px-4 py-2 text-sm text-white ${primaryButtonFocus}`}
             onClick={() => signOut({ redirect: false })}
