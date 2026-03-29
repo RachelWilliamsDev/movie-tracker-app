@@ -185,9 +185,19 @@ export async function ProfileView({
       <Link className="text-sm text-gray-600 underline" href="/">
         ← Back
       </Link>
-      <h1 className="text-2xl font-semibold">
-        {isOwnProfile ? "Your profile" : "Profile"}
-      </h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h1 className="text-2xl font-semibold">
+          {isOwnProfile ? "Your profile" : "Profile"}
+        </h1>
+        {isOwnProfile ? (
+          <Link
+            className="text-sm font-medium text-gray-700 underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
+            href="/settings/profile"
+          >
+            Profile settings
+          </Link>
+        ) : null}
+      </div>
 
       {/* FEAT-126: same `ProfileHeaderFollow` for /profile and /profile/[userId] */}
       <section className="rounded-lg border border-gray-200 bg-white p-4">
