@@ -1,6 +1,12 @@
 "use client";
 
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState
+} from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { parseUsername } from "@/lib/username";
@@ -80,6 +86,25 @@ export function ProfileSettingsForm() {
     void loadProfile();
   }, [loadProfile]);
 
+  const trimmedUsername = username.trim();
+  const usernameParsed = useMemo(
+    () => parseUsername(trimmedUsername),
+    [trimmedUsername]
+  );
+  const usernameNonEmptyInvalid =
+    trimmedUsername.length > 0 && !usernameParsed.ok;
+  const usernameFormatMessage =
+    usernameNonEmptyInvalid ? usernameParsed.error.message : null;
+  const displayUsernameError =
+    fieldErrors.username ?? usernameFormatMessage;
+  const usernameBlocksSubmit = usernameNonEmptyInvalid;
+  const usernameDescribedBy = [
+    "sett-username-hint",
+    displayUsernameError ? "sett-username-err" : null
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setFieldErrors({});
@@ -92,20 +117,18 @@ export function ProfileSettingsForm() {
       profileVisibility: visibility
     };
 
-    const trimmedUser = username.trim();
-    if (trimmedUser.length > 0) {
-      const parsed = parseUsername(trimmedUser);
-      if (!parsed.ok) {
+    if (trimmedUsername.length > 0) {
+      if (!usernameParsed.ok) {
         setFieldErrors((prev) => ({
           ...prev,
-          username: parsed.error.message
+          username: usernameParsed.error.message
         }));
         setSaving(false);
         return;
       }
       const initial = initialUsername ?? "";
-      if (parsed.username !== initial) {
-        body.username = trimmedUser;
+      if (usernameParsed.username !== initial) {
+        body.username = trimmedUsername;
       }
     } else if (initialUsername != null && initialUsername.length > 0) {
       body.username = null;
@@ -201,24 +224,30 @@ export function ProfileSettingsForm() {
             Username
           </label>
           <input
-            aria-invalid={fieldErrors.username ? true : undefined}
-            aria-describedby={
-              fieldErrors.username ? "sett-username-err" : undefined
-            }
+            aria-describedby={usernameDescribedBy}
+            aria-invalid={displayUsernameError ? true : undefined}
             autoComplete="username"
             className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
             id="sett-username"
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => {
+              setUsername(e.target.value);
+              setFieldErrors((prev) => {
+                if (!prev.username) return prev;
+                const next = { ...prev };
+                delete next.username;
+                return next;
+              });
+            }}
             placeholder="letters, numbers, underscores"
             type="text"
             value={username}
           />
-          {fieldErrors.username ? (
+          {displayUsernameError ? (
             <p className="text-sm text-red-600" id="sett-username-err" role="alert">
-              {fieldErrors.username}
+              {displayUsernameError}
             </p>
           ) : null}
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500" id="sett-username-hint">
             Public URL:{" "}
             <code className="rounded bg-gray-100 px-1 py-0.5 text-gray-800">
               /user/
@@ -309,7 +338,7 @@ export function ProfileSettingsForm() {
       ) : null}
 
       <div className="flex flex-wrap gap-3">
-        <Button disabled={saving} type="submit">
+        <Button disabled={saving || usernameBlocksSubmit} type="submit">
           {saving ? "Saving…" : "Save changes"}
         </Button>
       </div>
