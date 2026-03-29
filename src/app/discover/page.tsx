@@ -100,7 +100,7 @@ export default function DiscoverPage() {
           Discover users
         </h1>
         <p className="mt-1 text-sm text-gray-600">
-          Search by display name or email.
+          Search by display name or username.
         </p>
         <DiscoverUserRowSkeletonList
           ariaLabel="Loading discover"
@@ -138,7 +138,7 @@ export default function DiscoverPage() {
         Discover users
       </h1>
       <p className="mt-1 text-sm text-gray-600">
-        Search by display name or email.
+        Search by display name or username.
       </p>
 
       {session?.user?.id ? (
@@ -152,7 +152,7 @@ export default function DiscoverPage() {
           autoComplete="off"
           className="min-h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-base text-gray-900 shadow-sm outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 sm:text-sm"
           onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Search by name or email…"
+          placeholder="Search by name or username…"
           type="search"
           value={inputValue}
         />
@@ -189,7 +189,7 @@ export default function DiscoverPage() {
 
       {idle ? (
         <DiscoverMutedPanel className="mt-6">
-          Search by name or email to find people you know.
+          Search by name or username to find people you know.
         </DiscoverMutedPanel>
       ) : null}
 
@@ -197,7 +197,7 @@ export default function DiscoverPage() {
         <DiscoverMutedPanel className="mt-6">
           <span className="font-medium text-gray-800">No results</span>
           <span className="mt-2 block">
-            No one matches that search. Try a different name, username, or email.
+            No one matches that search. Try a different name or username.
           </span>
         </DiscoverMutedPanel>
       ) : null}

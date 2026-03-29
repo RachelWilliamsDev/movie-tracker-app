@@ -11,7 +11,8 @@ import {
   mapUserToSearchHit,
   profilePathForUser,
   searchUsersForViewer,
-  suggestUsersForViewer
+  suggestUsersForViewer,
+  userSocialDisplayName
 } from "@/lib/user-search";
 
 test("clampUserSearchLimit caps at max", () => {
@@ -22,55 +23,50 @@ test("clampUserSearchLimit caps at max", () => {
   assert.equal(clampUserSearchLimit(null), USER_SEARCH_MAX_LIMIT);
 });
 
+test("userSocialDisplayName never uses email", () => {
+  assert.equal(
+    userSocialDisplayName({
+      name: null,
+      username: null
+    }),
+    "Member"
+  );
+  assert.equal(
+    userSocialDisplayName({
+      name: "  Ada  ",
+      username: "ada_h"
+    }),
+    "Ada"
+  );
+  assert.equal(
+    userSocialDisplayName({
+      name: null,
+      username: "solo_handle"
+    }),
+    "solo_handle"
+  );
+});
+
 test("mapUserToSearchHit uses name as displayName when present", () => {
   const hit = mapUserToSearchHit(
     {
       id: "u1",
-      email: "a@b.com",
-      name: "  Ada  "
+      name: "  Ada  ",
+      username: "ada_lovelace"
     },
     true
   );
   assert.equal(hit.userId, "u1");
-  assert.equal(hit.username, null);
+  assert.equal(hit.username, "ada_lovelace");
   assert.equal(hit.displayName, "Ada");
   assert.equal(hit.avatarUrl, null);
   assert.equal(hit.isFollowing, true);
-});
-
-test("mapUserToSearchHit uses stored username as handle when set", () => {
-  const hit = mapUserToSearchHit(
-    {
-      id: "u3",
-      email: "a@b.com",
-      name: "Pat",
-      username: "pat_handle"
-    },
-    false
-  );
-  assert.equal(hit.username, "pat_handle");
-  assert.equal(hit.displayName, "Pat");
-});
-
-test("mapUserToSearchHit falls back displayName to email when no handle", () => {
-  const hit = mapUserToSearchHit(
-    {
-      id: "u2",
-      email: "solo@x.com",
-      name: null
-    },
-    false
-  );
-  assert.equal(hit.username, null);
-  assert.equal(hit.displayName, "solo@x.com");
-  assert.equal(hit.isFollowing, false);
 });
 
 test("mapUserToSearchHit uses username for displayName when name missing", () => {
   const hit = mapUserToSearchHit(
     {
       id: "u4",
-      email: "hide@x.com",
       name: null,
       username: "public_handle"
     },
@@ -81,14 +77,8 @@ test("mapUserToSearchHit uses username for displayName when name missing", () =>
 });
 
 test("profilePathForUser prefers /user/[username] when handle set", () => {
-  assert.equal(
-    profilePathForUser("cuid1", "ada"),
-    "/user/ada"
-  );
-  assert.equal(
-    profilePathForUser("cuid1", null),
-    "/profile/cuid1"
-  );
+  assert.equal(profilePathForUser("cuid1", "ada"), "/user/ada");
+  assert.equal(profilePathForUser("cuid1", null), "/profile/cuid1");
 });
 
 test("searchUsersForViewer returns empty for blank query", async () => {
@@ -115,7 +105,7 @@ test("searchUsersForViewer excludes viewer and maps rows", async () => {
       findMany: async (args: { where: object; take: number }) => {
         captured = { where: args.where, take: args.take };
         return [
-          { id: "other", email: "o@z.com", name: "Pat" }
+          { id: "other", name: "Pat", username: "pat_handle" }
         ];
       }
     },
@@ -128,6 +118,7 @@ test("searchUsersForViewer excludes viewer and maps rows", async () => {
   assert.equal(out.length, 1);
   assert.equal(out[0]?.userId, "other");
   assert.equal(out[0]?.displayName, "Pat");
+  assert.equal(out[0]?.username, "pat_handle");
   assert.equal(out[0]?.isFollowing, false);
   assert.ok(captured !== null);
   assert.equal((captured as { where: object; take: number }).take, 15);
@@ -137,7 +128,7 @@ test("searchUsersForViewer sets isFollowing from approved follows", async () => 
   const db = {
     user: {
       findMany: async () => [
-        { id: "other", email: "o@z.com", name: "Pat" }
+        { id: "other", name: "Pat", username: "pat_handle" }
       ]
     },
     userFollow: {
@@ -147,6 +138,24 @@ test("searchUsersForViewer sets isFollowing from approved follows", async () => 
 
   const out = await searchUsersForViewer("me", "pat", 15, db);
   assert.equal(out[0]?.isFollowing, true);
+});
+
+test("searchUsersForViewer drops rows without username", async () => {
+  const db = {
+    user: {
+      findMany: async () => [
+        { id: "a", name: "X", username: null },
+        { id: "b", name: "Y", username: "y_handle" }
+      ]
+    },
+    userFollow: {
+      findMany: async () => []
+    }
+  } as unknown as Pick<PrismaClient, "user" | "userFollow">;
+
+  const out = await searchUsersForViewer("me", "y", 15, db);
+  assert.equal(out.length, 1);
+  assert.equal(out[0]?.userId, "b");
 });
 
 test("clampSuggestionsLimit defaults and FEAT-122 5–10 band", () => {
@@ -161,12 +170,13 @@ test("clampSuggestionsLimit defaults and FEAT-122 5–10 band", () => {
 test("suggestUsersForViewer maps $queryRaw rows", async () => {
   const db = {
     $queryRaw: async () => [
-      { id: "u2", email: "b@b.com", name: "Bo", username: null }
+      { id: "u2", name: "Bo", username: "bo_handle" }
     ]
   } as unknown as SuggestUsersDb;
 
   const out = await suggestUsersForViewer("me", 6, db);
   assert.equal(out.length, 1);
   assert.equal(out[0]?.userId, "u2");
+  assert.equal(out[0]?.username, "bo_handle");
   assert.equal(out[0]?.isFollowing, false);
 });

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { jsonApiError } from "@/lib/api-errors";
 import { prisma } from "@/lib/prisma";
-import { userPublicDisplayName } from "@/lib/user-search";
+import { userSocialDisplayName } from "@/lib/user-search";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
@@ -52,7 +52,6 @@ export async function GET(request: Request) {
           select: {
             id: true,
             name: true,
-            email: true,
             username: true
           }
         }
@@ -69,7 +68,7 @@ export async function GET(request: Request) {
     const followers: FollowerItem[] = page.map((row) => ({
       userId: row.follower.id,
       username: row.follower.username,
-      displayName: userPublicDisplayName(row.follower),
+      displayName: userSocialDisplayName(row.follower),
       avatarUrl: null,
       followedAt: row.createdAt.toISOString()
     }));

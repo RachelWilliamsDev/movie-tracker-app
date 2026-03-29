@@ -14,7 +14,6 @@ const FEED_EVENT_TYPES = ["WATCH_COMPLETED", "RATED"] as const satisfies readonl
 const actorSelect = {
   id: true,
   name: true,
-  email: true,
   username: true,
   profileVisibility: true
 } as const;
@@ -173,11 +172,11 @@ export async function GET(request: Request) {
     nextOffset = hasMore ? offset + page.length : null;
   }
 
-  /** FEAT-134: prefer name, then handle, then email (never show email when handle exists). */
+  /** FEAT-136: never expose actor email in feed copy — name, then username, else neutral label. */
   const actorLabelForSentence = (row: FeedRow) =>
     row.actor.name?.trim() ||
     row.actor.username ||
-    row.actor.email;
+    "Member";
 
   const items = await Promise.all(
     page.map(async (row) => {

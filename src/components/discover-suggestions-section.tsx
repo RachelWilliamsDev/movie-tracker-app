@@ -127,7 +127,7 @@ export function DiscoverSuggestionsSection({ viewerId }: { viewerId: string }) {
 
       {!suggestedLoading && !suggestedError && suggested.length === 0 ? (
         <DiscoverMutedPanel className="mt-3">
-          No suggestions right now. Search by name, username, or email above to find people.
+          No suggestions right now. Search by name or username above to find people.
         </DiscoverMutedPanel>
       ) : null}
     </section>

@@ -30,20 +30,19 @@ export function clampSuggestionsLimit(raw: string | null): number {
 }
 
 /**
- * Discover / search row (FEAT-134). `username` is the stored handle only (`null` if unset — never
- * email). `displayName` is name → username → email. UIs show `@username` as a second line only
- * when it differs from `displayName`.
+ * Discover / search row (FEAT-134 / FEAT-136). Only users with a stored `username` are returned
+ * from search/suggestions. Response never includes email.
  */
 export type PublicUserSearchHit = {
   userId: string;
-  username: string | null;
+  username: string;
   displayName: string;
   avatarUrl: string | null;
   /** Viewer has an APPROVED follow to this user. */
   isFollowing: boolean;
 };
 
-/** Public handle for APIs: normalized `username` when set, else email (FEAT-127). */
+/** Public handle for APIs: normalized `username` when set, else email (FEAT-127; non-discovery only). */
 export function userPublicHandle(user: {
   email: string;
   username?: string | null;
@@ -54,10 +53,9 @@ export function userPublicHandle(user: {
 }
 
 /**
- * FEAT-134: List/search primary label — prefer real name, then public handle, then email.
+ * FEAT-136: Display label for social surfaces (lists, profile header, activity) — never email.
  */
-export function userPublicDisplayName(user: {
-  email: string;
+export function userSocialDisplayName(user: {
   name?: string | null;
   username?: string | null;
 }): string {
@@ -68,7 +66,7 @@ export function userPublicDisplayName(user: {
   if (user.username != null && user.username.length > 0) {
     return user.username;
   }
-  return user.email;
+  return "Member";
 }
 
 /** FEAT-132/134: canonical public profile URL when a handle exists. */
@@ -83,23 +81,20 @@ export function profilePathForUser(
 }
 
 /**
- * Maps DB user to API shape for Discover / search (FEAT-134).
+ * Maps a user row that already has a non-null `username` to the public search hit shape (FEAT-136).
  */
 export function mapUserToSearchHit(
   user: {
     id: string;
-    email: string;
     name: string | null;
-    username?: string | null;
+    username: string;
   },
   isFollowing: boolean
 ): PublicUserSearchHit {
-  const handle =
-    user.username != null && user.username.length > 0 ? user.username : null;
   return {
     userId: user.id,
-    username: handle,
-    displayName: userPublicDisplayName(user),
+    username: user.username,
+    displayName: userSocialDisplayName(user),
     avatarUrl: null,
     isFollowing
   };
@@ -119,15 +114,16 @@ export async function searchUsersForViewer(
   const rows = await db.user.findMany({
     where: {
       id: { not: viewerId },
+      username: { not: null },
       OR: [
         { name: { contains: trimmed, mode: "insensitive" } },
         { email: { contains: trimmed, mode: "insensitive" } },
         { username: { contains: trimmed, mode: "insensitive" } }
       ]
     },
-    select: { id: true, email: true, name: true, username: true },
+    select: { id: true, name: true, username: true },
     take: limit,
-    orderBy: [{ name: "asc" }, { email: "asc" }, { username: "asc" }]
+    orderBy: [{ name: "asc" }, { username: "asc" }]
   });
 
   const ids = rows.map((r) => r.id);
@@ -144,18 +140,25 @@ export async function searchUsersForViewer(
     followingIds = new Set(follows.map((f) => f.followingId));
   }
 
-  return rows.map((r) => mapUserToSearchHit(r, followingIds.has(r.id)));
+  const withHandle = rows.filter(
+    (r): r is typeof r & { username: string } =>
+      r.username != null && r.username.length > 0
+  );
+
+  return withHandle.map((r) =>
+    mapUserToSearchHit(
+      {
+        id: r.id,
+        name: r.name,
+        username: r.username
+      },
+      followingIds.has(r.id)
+    )
+  );
 }
 
 /**
- * Suggested users for discover (FEAT-122).
- *
- * **MVP logic:** random sample via PostgreSQL `ORDER BY RANDOM()` over the eligible pool.
- * **Perf follow-up:** at scale, replace with precomputed buckets, keyset pagination, or
- * approximate randomness to avoid full-table sorts.
- *
- * Eligible: not the viewer, `profileVisibility = PUBLIC`, and no existing follow row
- * where this viewer is the follower (any approval status). `isFollowing` is always false.
+ * Suggested users for discover (FEAT-122). Eligible users must have `username` set (FEAT-136).
  */
 export async function suggestUsersForViewer(
   viewerId: string,
@@ -163,11 +166,12 @@ export async function suggestUsersForViewer(
   db: SuggestUsersDb
 ): Promise<PublicUserSearchHit[]> {
   const rows = await db.$queryRaw<
-    Array<{ id: string; email: string; name: string | null; username: string | null }>
+    Array<{ id: string; name: string | null; username: string }>
   >`
-    SELECT u.id, u.email, u.name, u.username
+    SELECT u.id, u.name, u.username
     FROM "User" u
     WHERE u.id != ${viewerId}
+      AND u.username IS NOT NULL
       AND u."profileVisibility" = 'PUBLIC'
       AND NOT EXISTS (
         SELECT 1
