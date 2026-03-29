@@ -30,51 +30,56 @@ export function DiscoverSuggestionsSection({ viewerId }: { viewerId: string }) {
 
   useEffect(() => {
     const ac = new AbortController();
-    setSuggestedLoading(true);
-    setSuggestedError(null);
+    const startId = window.setTimeout(() => {
+      setSuggestedLoading(true);
+      setSuggestedError(null);
 
-    const url = new URL("/api/users/suggestions", window.location.origin);
-    url.searchParams.set("limit", String(USER_SUGGESTIONS_DEFAULT_LIMIT));
+      const url = new URL("/api/users/suggestions", window.location.origin);
+      url.searchParams.set("limit", String(USER_SUGGESTIONS_DEFAULT_LIMIT));
 
-    fetch(url.toString(), { cache: "no-store", signal: ac.signal })
-      .then(async (res) => {
-        const data = (await res.json()) as {
-          ok?: boolean;
-          error?: string;
-          code?: string;
-          users?: PublicUserSearchHit[];
-        };
-        if (res.status === 401 || data.code === "UNAUTHORIZED") {
-          throw new Error("UNAUTHORIZED");
-        }
-        if (!res.ok || !data.ok || !Array.isArray(data.users)) {
-          throw new Error(
-            data.error ?? "Could not load suggestions. Try again."
-          );
-        }
-        setSuggested(data.users);
-      })
-      .catch((e: unknown) => {
-        if (e instanceof Error && e.name === "AbortError") {
-          return;
-        }
-        if (e instanceof Error && e.message === "UNAUTHORIZED") {
-          setSuggestedError("UNAUTHORIZED");
+      fetch(url.toString(), { cache: "no-store", signal: ac.signal })
+        .then(async (res) => {
+          const data = (await res.json()) as {
+            ok?: boolean;
+            error?: string;
+            code?: string;
+            users?: PublicUserSearchHit[];
+          };
+          if (res.status === 401 || data.code === "UNAUTHORIZED") {
+            throw new Error("UNAUTHORIZED");
+          }
+          if (!res.ok || !data.ok || !Array.isArray(data.users)) {
+            throw new Error(
+              data.error ?? "Could not load suggestions. Try again."
+            );
+          }
+          setSuggested(data.users);
+        })
+        .catch((e: unknown) => {
+          if (e instanceof Error && e.name === "AbortError") {
+            return;
+          }
+          if (e instanceof Error && e.message === "UNAUTHORIZED") {
+            setSuggestedError("UNAUTHORIZED");
+            setSuggested([]);
+            return;
+          }
           setSuggested([]);
-          return;
-        }
-        setSuggested([]);
-        setSuggestedError(
-          e instanceof Error ? e.message : "Something went wrong."
-        );
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) {
-          setSuggestedLoading(false);
-        }
-      });
+          setSuggestedError(
+            e instanceof Error ? e.message : "Something went wrong."
+          );
+        })
+        .finally(() => {
+          if (!ac.signal.aborted) {
+            setSuggestedLoading(false);
+          }
+        });
+    }, 0);
 
-    return () => ac.abort();
+    return () => {
+      window.clearTimeout(startId);
+      ac.abort();
+    };
   }, [viewerId, suggestedRetryNonce]);
 
   return (

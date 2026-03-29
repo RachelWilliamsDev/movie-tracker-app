@@ -83,7 +83,9 @@ export function ProfileSettingsForm() {
   }, []);
 
   useEffect(() => {
-    void loadProfile();
+    queueMicrotask(() => {
+      void loadProfile();
+    });
   }, [loadProfile]);
 
   const trimmedUsername = username.trim();
