@@ -6,7 +6,7 @@ A small **Next.js** app for searching TMDB titles, tracking what you watch, per-
 
 - **Auth** — Sign up and sign in with email/password (sessions via NextAuth).
 - **Search** — Find movies and TV shows via The Movie Database (TMDB) API.
-- **Detail pages** — Movie and TV show views with overview, genres, and poster.
+- **Detail pages** — Movie and TV show views with overview, genres, poster, and **Where to Watch** (TMDB streaming/rent/buy for a configurable region; default GB).
 - **Watch list** — Set title status to **Watching**, **Completed**, or **Want to Watch**; for completed titles, tag **where** you watched.
 - **Ratings** — Save a **1–5** score per title (per user).
 - **TV progress** — Track current episode **per season** (does not overwrite other seasons).
@@ -144,10 +144,15 @@ Notes:
 |----------|----------|---------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string for Prisma |
 | `TMDB_API_KEY` | Yes (for search/detail) | TMDB API key ([themoviedb.org](https://www.themoviedb.org/settings/api)) |
+| `WATCH_PROVIDERS_REGION` | No | ISO 3166-1 alpha-2 region for **Where to Watch** (server-only). Default **GB**. See [docs/where-to-watch.md](docs/where-to-watch.md). |
 | `NEXTAUTH_SECRET` | Yes in production | Secret for signing session tokens |
 | `NEXTAUTH_URL` | Yes (local + production) | Canonical site URL for NextAuth. Use `http://127.0.0.1:3000` for local dev (same host/port as `npm run dev`). Set to your production URL in hosted environments. |
 
 Use `.env.example` as the starting point; omitting `NEXTAUTH_URL` locally causes NextAuth to log a warning.
+
+### Where to Watch (TMDB)
+
+Endpoints, caching TTL, and a **manual QA checklist** for operators: [docs/where-to-watch.md](docs/where-to-watch.md).
 
 ## Project layout (high level)
 
