@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { WatchStatus } from "@prisma/client";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 import { FeedPostCard } from "@/components/feed-post-card";
@@ -11,6 +12,10 @@ const LIMIT = 20;
 const POLL_MS = 30_000;
 /** Matches `POST_LIKE_SUMMARY_MAX_IDS` in post-like-service (MEM-87). */
 const LIKE_SUMMARY_MAX_IDS = 50;
+
+function viewerWatchKey(contentId: number, mediaType: "movie" | "tv"): string {
+  return `${contentId}:${mediaType}`;
+}
 
 type Pagination = {
   limit: number;
@@ -70,11 +75,12 @@ function FeedCardSkeleton() {
 }
 
 export default function FeedPage() {
-  const { status } = useSession();
+  const { status, data: session } = useSession();
   const [items, setItems] = useState<UnifiedFeedPostItem[]>([]);
   const [engagement, setEngagement] = useState<Record<string, PostEngagement>>(
     {}
   );
+  const [watchByKey, setWatchByKey] = useState<Record<string, WatchStatus>>({});
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
@@ -163,6 +169,55 @@ export default function FeedPage() {
     }, POLL_MS);
     return () => window.clearInterval(id);
   }, [status, loadInitial]);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user?.id) {
+      setWatchByKey({});
+      return;
+    }
+    if (items.length === 0) {
+      setWatchByKey({});
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/watch?userId=${encodeURIComponent(session.user.id)}`,
+          { cache: "no-store" }
+        );
+        const data = (await res.json()) as {
+          ok?: boolean;
+          watches?: Array<{
+            contentId: number;
+            mediaType: string;
+            watchStatus: WatchStatus;
+          }>;
+        };
+        if (cancelled) {
+          return;
+        }
+        if (!res.ok || !data.ok || !Array.isArray(data.watches)) {
+          return;
+        }
+        const next: Record<string, WatchStatus> = {};
+        for (const w of data.watches) {
+          if (w.mediaType !== "movie" && w.mediaType !== "tv") {
+            continue;
+          }
+          next[viewerWatchKey(w.contentId, w.mediaType)] = w.watchStatus;
+        }
+        setWatchByKey(next);
+      } catch {
+        /* keep existing map */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status, session?.user?.id, items]);
 
   async function loadMore() {
     if (!nextCursor || loadingMore || !hasMore) {
@@ -260,6 +315,9 @@ export default function FeedPage() {
               <ul className="space-y-4">
                 {items.map((item) => {
                   const e = engagement[item.id];
+                  const mediaType =
+                    item.media.kind === "MOVIE" ? "movie" : "tv";
+                  const wk = viewerWatchKey(item.media.tmdbId, mediaType);
                   return (
                     <li key={item.id}>
                       <FeedPostCard
@@ -273,6 +331,13 @@ export default function FeedPage() {
                               likeCount: count,
                               viewerHasLiked: liked
                             }
+                          }));
+                        }}
+                        viewerWatchStatus={watchByKey[wk] ?? null}
+                        onWatchUpdated={(contentId, mt, st) => {
+                          setWatchByKey((prev) => ({
+                            ...prev,
+                            [viewerWatchKey(contentId, mt)]: st
                           }));
                         }}
                       />
