@@ -18,6 +18,8 @@ export type ApiErrorCode =
   | "UNFOLLOW_FAILED"
   | "FOLLOWERS_LIST_FAILED"
   | "FOLLOWING_LIST_FAILED"
+  | "COMMENTS_LIST_FAILED"
+  | "COMMENT_CREATE_FAILED"
   | UsernameValidationCode;
 
 export type ApiErrorBody = {

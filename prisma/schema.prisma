@@ -71,6 +71,7 @@ model User {
   ratings           UserRating[]
   activityEvents    UserActivityEvent[]
   posts             Post[]
+  postComments      PostComment[]
 }
 
 /// Append-only activity log for a future social feed; metadata holds TMDB keys + display hints.
@@ -99,8 +100,22 @@ model Post {
   createdAt             DateTime
   sourceActivityEventId String?        @unique
   sourceActivityEvent   UserActivityEvent? @relation(fields: [sourceActivityEventId], references: [id], onDelete: SetNull)
+  comments              PostComment[]
 
   @@index([userId, createdAt(sort: Desc)])
+}
+
+/// Flat comments on a feed post (MEM-88); plain text only, max length enforced in API.
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String   @db.VarChar(2000)
+  createdAt DateTime @default(now())
+
+  @@index([postId, createdAt])
 }
 
 /// TMDB-backed watch record; one row per user + title (movie or TV).
