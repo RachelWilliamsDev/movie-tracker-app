@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { parseUsername } from "@/lib/username";
 
 type ProfileOk = {
   ok: true;
@@ -19,25 +20,39 @@ export function ChooseUsernameForm({ nextPath }: { nextPath: string }) {
   const router = useRouter();
   const { update } = useSession();
   const [value, setValue] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [blurred, setBlurred] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const trimmed = value.trim();
+  const parsed = useMemo(() => parseUsername(trimmed), [trimmed]);
+  const clientOk = parsed.ok;
+  const showValidation = blurred || trimmed.length > 0;
+  const formatError =
+    showValidation && !parsed.ok ? parsed.error.message : null;
+  const displayError = serverError ?? formatError;
+  const describedBy = [
+    "choose-username-hint",
+    displayError ? "choose-username-err" : null
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    const trimmed = value.trim();
-    if (trimmed.length === 0) {
-      setError("Enter a username.");
-      setLoading(false);
+    setServerError(null);
+    if (!clientOk) {
+      setBlurred(true);
       return;
     }
+
+    setLoading(true);
 
     try {
       const res = await fetch("/api/me/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ username: trimmed })
       });
 
@@ -48,14 +63,14 @@ export function ChooseUsernameForm({ nextPath }: { nextPath: string }) {
           "error" in data && typeof data.error === "string"
             ? data.error
             : "Could not save username.";
-        setError(msg);
+        setServerError(msg);
         setLoading(false);
         return;
       }
 
       const okPayload = data as ProfileOk;
       if (!okPayload.ok || !okPayload.user?.username) {
-        setError("Could not save username.");
+        setServerError("Could not save username.");
         setLoading(false);
         return;
       }
@@ -64,7 +79,7 @@ export function ChooseUsernameForm({ nextPath }: { nextPath: string }) {
       router.push(nextPath.startsWith("/") ? nextPath : `/${nextPath}`);
       router.refresh();
     } catch {
-      setError("Something went wrong. Try again.");
+      setServerError("Something went wrong. Try again.");
     } finally {
       setLoading(false);
     }
@@ -81,27 +96,34 @@ export function ChooseUsernameForm({ nextPath }: { nextPath: string }) {
           Username
         </label>
         <input
+          aria-describedby={describedBy}
+          aria-invalid={displayError ? true : undefined}
+          aria-required
           autoComplete="username"
           className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
           id="username"
           name="username"
-          onChange={(e) => setValue(e.target.value)}
+          onBlur={() => setBlurred(true)}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setServerError(null);
+          }}
           placeholder="e.g. movie_fan_42"
           type="text"
           value={value}
         />
-        <p className="text-xs text-gray-500">
-          Letters, numbers, and underscores. This is how others find you.
+        <p className="text-xs text-gray-500" id="choose-username-hint">
+          Letters, numbers, and underscores (3–30). This is how others find you.
         </p>
       </div>
 
-      {error ? (
-        <p className="text-sm text-red-600" role="alert">
-          {error}
+      {displayError ? (
+        <p className="text-sm text-red-600" id="choose-username-err" role="alert">
+          {displayError}
         </p>
       ) : null}
 
-      <Button disabled={loading} type="submit">
+      <Button disabled={loading || !clientOk} type="submit">
         {loading ? "Saving…" : "Continue"}
       </Button>
     </form>
