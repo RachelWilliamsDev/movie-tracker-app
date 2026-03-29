@@ -9,13 +9,13 @@ type PageProps = {
   searchParams: Promise<{ userId?: string }>;
 };
 
-export default async function FollowersPage({ searchParams }: PageProps) {
+export default async function FollowersPage(props: PageProps) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     redirect("/profile");
   }
 
-  const sp = await searchParams;
+  const sp = await props.searchParams;
   const requested = sp.userId?.trim();
   const targetUserId =
     requested && requested.length > 0 ? requested : session.user.id;

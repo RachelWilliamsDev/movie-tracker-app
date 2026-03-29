@@ -11,8 +11,8 @@ type PageProps = {
   params: Promise<{ userId: string }>;
 };
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { userId: raw } = await params;
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const { userId: raw } = await props.params;
   const id = raw.trim();
   if (!id) {
     return { title: "Profile | MovieApp" };
@@ -33,8 +33,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function ProfileByUserIdPage({ params }: PageProps) {
-  const { userId: raw } = await params;
+export default async function ProfileByUserIdPage(props: PageProps) {
+  const { userId: raw } = await props.params;
   const targetUserId = raw.trim();
   if (!targetUserId) {
     notFound();

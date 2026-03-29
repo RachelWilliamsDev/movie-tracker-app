@@ -8,9 +8,9 @@ type PageProps = {
   searchParams: Promise<{ userId?: string }>;
 };
 
-export default async function ProfilePage({ searchParams }: PageProps) {
+export default async function ProfilePage(props: PageProps) {
   const session = await getServerSession(authOptions);
-  const sp = await searchParams;
+  const sp = await props.searchParams;
   const requestedId = sp.userId?.trim() ?? "";
 
   if (requestedId.length > 0) {
