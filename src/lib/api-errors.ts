@@ -22,6 +22,10 @@ export type ApiErrorCode =
   | "COMMENT_CREATE_FAILED"
   | "LIKE_TOGGLE_FAILED"
   | "LIKES_SUMMARY_FAILED"
+  | "SHARE_POST_INVALID_MEDIA"
+  | "SHARE_POST_ALREADY_RATED"
+  | "SHARE_POST_THROTTLED"
+  | "SHARE_POST_FAILED"
   | UsernameValidationCode;
 
 export type ApiErrorBody = {
