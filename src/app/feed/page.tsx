@@ -3,16 +3,12 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
+import { FeedPostCard } from "@/components/feed-post-card";
 import { Button } from "@/components/ui/button";
+import type { UnifiedFeedPostItem } from "@/lib/unified-feed-post-mapper";
 
 const LIMIT = 20;
 const POLL_MS = 30_000;
-
-type FeedItem = {
-  id: string;
-  sentence: string;
-  createdAt: string;
-};
 
 type Pagination = {
   limit: number;
@@ -21,9 +17,33 @@ type Pagination = {
   nextOffset: number | null;
 };
 
+function FeedCardSkeleton() {
+  return (
+    <div
+      aria-hidden
+      className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+    >
+      <div className="flex gap-3">
+        <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-gray-200" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="h-4 w-48 animate-pulse rounded bg-gray-200" />
+          <div className="h-3 w-32 animate-pulse rounded bg-gray-100" />
+          <div className="mt-3 flex gap-3 rounded-md border border-gray-100 bg-gray-50/80 p-3">
+            <div className="h-[4.5rem] w-12 shrink-0 animate-pulse rounded bg-gray-200" />
+            <div className="flex-1 space-y-2 pt-1">
+              <div className="h-3 w-16 animate-pulse rounded bg-gray-200" />
+              <div className="h-4 max-w-[200px] w-[min(100%,12rem)] animate-pulse rounded bg-gray-200" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FeedPage() {
   const { status } = useSession();
-  const [items, setItems] = useState<FeedItem[]>([]);
+  const [items, setItems] = useState<UnifiedFeedPostItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
@@ -32,7 +52,7 @@ export default function FeedPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchFeed = useCallback(async (cursor: string | null) => {
-    const url = new URL("/api/activity/feed", window.location.origin);
+    const url = new URL("/api/feed/posts", window.location.origin);
     url.searchParams.set("limit", String(LIMIT));
     if (cursor) {
       url.searchParams.set("cursor", cursor);
@@ -41,7 +61,7 @@ export default function FeedPage() {
     const data = (await res.json()) as {
       ok?: boolean;
       error?: string;
-      items?: Array<{ id: string; sentence?: string; createdAt: string }>;
+      items?: UnifiedFeedPostItem[];
       pagination?: Pagination;
     };
     if (res.status === 401) {
@@ -63,13 +83,7 @@ export default function FeedPage() {
       setError(null);
       try {
         const data = await fetchFeed(null);
-        setItems(
-          data.items!.map((i) => ({
-            id: i.id,
-            sentence: i.sentence ?? "",
-            createdAt: i.createdAt
-          }))
-        );
+        setItems(data.items!);
         setNextCursor(data.pagination!.nextCursor);
         setHasMore(data.pagination!.hasMore);
       } catch (e) {
@@ -112,14 +126,7 @@ export default function FeedPage() {
     setError(null);
     try {
       const data = await fetchFeed(nextCursor);
-      setItems((prev) => [
-        ...prev,
-        ...data.items!.map((i) => ({
-          id: i.id,
-          sentence: i.sentence ?? "",
-          createdAt: i.createdAt
-        }))
-      ]);
+      setItems((prev) => [...prev, ...data.items!]);
       setNextCursor(data.pagination!.nextCursor);
       setHasMore(data.pagination!.hasMore);
     } catch (e) {
@@ -143,9 +150,9 @@ export default function FeedPage() {
         <Link className="text-sm text-gray-600 underline" href="/">
           ← Back
         </Link>
-        <h1 className="mt-4 text-2xl font-semibold">Friends activity</h1>
+        <h1 className="mt-4 text-2xl font-semibold">Feed</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Sign in to see activity from people you follow.
+          Sign in to see posts from people you follow.
         </p>
       </main>
     );
@@ -161,17 +168,22 @@ export default function FeedPage() {
           <span className="text-xs text-gray-500">Updating…</span>
         ) : null}
       </div>
-      <h1 className="text-2xl font-semibold">Friends activity</h1>
+      <h1 className="text-2xl font-semibold">Feed</h1>
+      <p className="text-sm text-gray-600">
+        Activity and shares from people you follow.
+      </p>
 
       {loadingInitial ? (
-        <ul aria-busy="true" aria-label="Loading feed" className="space-y-3">
+        <div
+          aria-busy="true"
+          aria-label="Loading feed"
+          className="space-y-4"
+          role="status"
+        >
           {Array.from({ length: 5 }).map((_, i) => (
-            <li
-              key={`sk-${i}`}
-              className="min-h-[48px] animate-pulse rounded-lg bg-gray-100"
-            />
+            <FeedCardSkeleton key={`sk-${i}`} />
           ))}
-        </ul>
+        </div>
       ) : (
         <>
           {error && error !== "UNAUTHORIZED" ? (
@@ -188,20 +200,20 @@ export default function FeedPage() {
             </div>
           ) : null}
           {!error && items.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">
-              No activity yet. Follow friends and check back after they watch or
-              rate something.
-            </p>
+            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center">
+              <p className="text-sm font-medium text-gray-800">Nothing here yet</p>
+              <p className="mt-2 text-sm text-gray-600">
+                Follow friends to see their watches, ratings, and shares in one
+                place.
+              </p>
+            </div>
           ) : null}
           {items.length > 0 ? (
             <>
-              <ul className="space-y-3">
+              <ul className="space-y-4">
                 {items.map((item) => (
-                  <li
-                    key={item.id}
-                    className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm leading-snug text-gray-900"
-                  >
-                    {item.sentence}
+                  <li key={item.id}>
+                    <FeedPostCard item={item} />
                   </li>
                 ))}
               </ul>
