@@ -45,7 +45,8 @@ enum FollowApprovalStatus {
 model User {
   id                String                  @id @default(cuid())
   email             String                  @unique
-  /// Canonical social handle; normalized lowercase in app on write. Null until user picks one (FEAT-127).
+  /// Canonical social handle; normalized lowercase on write. Null only until onboarding (FEAT-127/129).
+  /// FEAT-136: public discovery APIs require a username; run `npm run fe136:backfill` then `fe136:check` for ops.
   username          String?                 @unique
   name              String?
   password          String
