@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { FeedPostSocial } from "@/components/feed-post-social";
 import type { PostMediaKind, PostType } from "@prisma/client";
 import type { UnifiedFeedPostItem } from "@/lib/unified-feed-post-mapper";
 import { profilePathForUser } from "@/lib/user-search";
@@ -142,7 +143,21 @@ type CardState =
   | { status: "ok"; title: string; posterPath: string | null }
   | { status: "error" };
 
-export function FeedPostCard({ item }: { item: UnifiedFeedPostItem }) {
+export function FeedPostCard({
+  item,
+  likeCount,
+  viewerHasLiked,
+  onLikeSynced
+}: {
+  item: UnifiedFeedPostItem;
+  likeCount: number;
+  viewerHasLiked: boolean;
+  onLikeSynced?: (
+    postId: string,
+    liked: boolean,
+    likeCount: number
+  ) => void;
+}) {
   const { relative, absolute } = formatFeedTimestamp(item.createdAt);
   const authorHref = profilePathForUser(item.author.id, item.author.username);
   const showHandle =
@@ -287,6 +302,13 @@ export function FeedPostCard({ item }: { item: UnifiedFeedPostItem }) {
               </div>
             </Link>
           </div>
+
+          <FeedPostSocial
+            likeCount={likeCount}
+            onLikeSynced={onLikeSynced}
+            postId={item.id}
+            viewerHasLiked={viewerHasLiked}
+          />
         </div>
       </div>
     </article>
