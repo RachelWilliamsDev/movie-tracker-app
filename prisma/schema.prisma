@@ -53,6 +53,12 @@ enum FollowApprovalStatus {
   PENDING
 }
 
+enum NotificationType {
+  LIKE
+  COMMENT
+  FOLLOW
+}
+
 model User {
   id                String                  @id @default(cuid())
   email             String                  @unique
@@ -73,6 +79,8 @@ model User {
   posts             Post[]
   postComments      PostComment[]
   postLikes         PostLike[]
+  notifications     Notification[] @relation("NotificationRecipient")
+  notificationsSent Notification[] @relation("NotificationActor")
 }
 
 /// Append-only activity log for a future social feed; metadata holds TMDB keys + display hints.
@@ -190,4 +198,25 @@ model UserFollow {
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+}
+
+/// In-app social notifications (MEM-105). `entityId` is a flexible reference:
+/// - LIKE: postId
+/// - COMMENT: commentId (preferred) or postId if product chooses
+/// - FOLLOW: actorId or another stable follow reference
+/// We intentionally do not FK `entityId` because it is polymorphic across types.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actorId   String
+  actor     User             @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  entityId  String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, isRead, createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
 }
