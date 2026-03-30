@@ -216,6 +216,8 @@ model Notification {
   isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
 
+  /// MEM-106: idempotency key across logical event identity.
+  @@unique([userId, actorId, type, entityId])
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, isRead, createdAt(sort: Desc)])
   @@index([actorId, createdAt(sort: Desc)])
